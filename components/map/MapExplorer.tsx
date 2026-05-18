@@ -731,38 +731,74 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
             {/* Pinned */}
               <div className="pointer-events-auto absolute bottom-28 right-2 z-10 max-w-full sm:bottom-4 sm:right-4">
                 {pinnedCard && pinnedCard.state ? (
-                  <div className="flex w-44 flex-col gap-1.5 rounded-xl border border-[color:var(--ss-green-mid)]/30 bg-white/95 p-2.5 text-xs shadow-md backdrop-blur sm:w-64 sm:gap-1 sm:p-3">
-                    <div className="flex items-start justify-between gap-1">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-[9px] sm:tracking-[0.2em]">Pinned</p>
-                      <button
-                        type="button"
-                        aria-label="Unpin state"
-                        onClick={() => setPinnedStateId(null)}
-                        className="cursor-pointer text-sm leading-none text-slate-500 hover:text-slate-700 sm:text-xs"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="flex items-end justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-slate-900 sm:text-sm">{pinnedCard.state.name}</p>
-                        <p className="text-sm text-slate-700 sm:text-[10px]">
+                  <>
+                    <div className="flex w-44 flex-col gap-1.5 rounded-xl border border-[color:var(--ss-green-mid)]/30 bg-white/95 p-2.5 text-xs shadow-md backdrop-blur sm:hidden">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Pinned</p>
+                        <button
+                          type="button"
+                          aria-label="Unpin state"
+                          onClick={() => setPinnedStateId(null)}
+                          className="cursor-pointer text-sm leading-none text-slate-500 hover:text-slate-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="min-w-0 truncate text-lg font-semibold leading-tight text-slate-950">
+                        {pinnedCard.state.name}
+                      </p>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="text-base font-medium tabular-nums text-slate-800">
                           {formatMetricValue(pinnedCard.value, selectedMetric?.unit ?? undefined)}
                         </p>
                         {pinnedCard.rank ? (
-                          <p className="text-xs text-slate-500 sm:text-[11px]">Rank {pinnedCard.rank} / {states.length}</p>
+                          <p className="whitespace-nowrap text-right text-xs tabular-nums text-slate-500">
+                            Rank {pinnedCard.rank} / {states.length}
+                          </p>
                         ) : (
-                          <p className="text-xs text-slate-500 sm:text-[11px]">No data</p>
+                          <p className="whitespace-nowrap text-right text-xs text-slate-500">No data</p>
                         )}
                       </div>
                       <Link
                         href={`/graph?metric=${selectedMetric?.id ?? ""}&states=${pinnedCard.state.abbreviation ?? pinnedCard.state.id}&startYear=${selectedYear}&endYear=${selectedYear}`}
-                        className="shrink-0 rounded-lg border border-[color:var(--ss-green)] px-2 py-1 text-[10px] font-medium leading-tight text-[color:var(--ss-green)] hover:bg-[color:var(--ss-green-light)] sm:rounded-md sm:py-0.5 sm:text-[9px]"
+                        className="ml-auto inline-flex shrink-0 rounded-full border border-[color:var(--ss-green)] px-3 py-1 text-[10px] font-medium leading-tight text-[color:var(--ss-green)] hover:bg-[color:var(--ss-green-light)]"
                       >
                         Add to compare
                       </Link>
                     </div>
-                  </div>
+                    <div className="hidden w-64 flex-col gap-1 rounded-xl border border-[color:var(--ss-green-mid)]/30 bg-white/95 p-3 text-xs shadow-md backdrop-blur sm:flex">
+                      <div className="flex items-start justify-between gap-1">
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Pinned</p>
+                        <button
+                          type="button"
+                          aria-label="Unpin state"
+                          onClick={() => setPinnedStateId(null)}
+                          className="cursor-pointer text-xs leading-none text-slate-500 hover:text-slate-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">{pinnedCard.state.name}</p>
+                          <p className="text-[10px] text-slate-700">
+                            {formatMetricValue(pinnedCard.value, selectedMetric?.unit ?? undefined)}
+                          </p>
+                          {pinnedCard.rank ? (
+                            <p className="text-[11px] text-slate-500">Rank {pinnedCard.rank} / {states.length}</p>
+                          ) : (
+                            <p className="text-[11px] text-slate-500">No data</p>
+                          )}
+                        </div>
+                        <Link
+                          href={`/graph?metric=${selectedMetric?.id ?? ""}&states=${pinnedCard.state.abbreviation ?? pinnedCard.state.id}&startYear=${selectedYear}&endYear=${selectedYear}`}
+                          className="shrink-0 rounded-md border border-[color:var(--ss-green)] px-2 py-0.5 text-[9px] font-medium leading-tight text-[color:var(--ss-green)] hover:bg-[color:var(--ss-green-light)]"
+                        >
+                          Add to compare
+                        </Link>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="hidden sm:block w-64 rounded-lg border border-dashed border-[color:var(--ss-green-mid)]/50 bg-white/90 p-3 text-xs text-slate-600 shadow-sm backdrop-blur opacity-70">
                     Click a state on the map to pin it.
