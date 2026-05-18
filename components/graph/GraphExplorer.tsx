@@ -368,7 +368,7 @@ export function GraphExplorer({
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 md:justify-end" aria-live="polite">
             {!isChartZoomed && selectedStateIds.length > 0 && chartData.length > 0 ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm">
+              <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm sm:inline-flex">
                 <MousePointer2 className="h-3.5 w-3.5" aria-hidden />
                 <span>Scroll to zoom</span>
               </span>

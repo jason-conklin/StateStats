@@ -1,7 +1,7 @@
 "use client";
 
 import { Feature, Geometry } from "geojson";
-import { EyeOff, RotateCcw, Table2 } from "lucide-react";
+import { ArrowDown, EyeOff, RotateCcw, Table2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Legend } from "./Legend";
@@ -96,6 +96,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
   const [isTableOpen, setIsTableOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(true);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mobileDataTableRef = useRef<HTMLElement | null>(null);
   const [mapContainerWidth, setMapContainerWidth] = useState(0);
   const [legendPosition, setLegendPosition] = useState<{ x: number; y: number }>({ x: 12, y: 580 });
   const legendWasDraggedRef = useRef(false);
@@ -251,6 +252,15 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
     if (stateId) setTableOpen(true);
   };
 
+  const handleViewMobileDataTable = useCallback(() => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    mobileDataTableRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }, []);
+
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
       if (!dragRef.current.isDragging || !mapContainerRef.current) return;
@@ -293,7 +303,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
         if (lastLegendViewportRef.current !== viewportMode) {
           setLegendPosition({
             x: 12,
-            y: viewportMode === "mobile" ? 285 : 580,
+            y: viewportMode === "mobile" ? 245 : 580,
           });
           lastLegendViewportRef.current = viewportMode;
         }
@@ -719,7 +729,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
             </div>
 
             {/* Pinned */}
-              <div className="pointer-events-auto absolute bottom-16 right-2 sm:bottom-4 sm:right-4 z-10 max-w-full">
+              <div className="pointer-events-auto absolute bottom-28 right-2 z-10 max-w-full sm:bottom-4 sm:right-4">
                 {pinnedCard && pinnedCard.state ? (
                   <div className="flex w-44 flex-col gap-1.5 rounded-xl border border-[color:var(--ss-green-mid)]/30 bg-white/95 p-2.5 text-xs shadow-md backdrop-blur sm:w-64 sm:gap-1 sm:p-3">
                     <div className="flex items-start justify-between gap-1">
@@ -759,11 +769,25 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                   </div>
                 )}
               </div>
+
+              <div className="pointer-events-auto absolute bottom-5 left-1/2 z-10 -translate-x-1/2 sm:hidden">
+                <button
+                  type="button"
+                  onClick={handleViewMobileDataTable}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur-sm transition active:scale-[0.98] active:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                >
+                  <span>View data table</span>
+                  <ArrowDown className="h-4 w-4 shrink-0" aria-hidden />
+                </button>
+              </div>
             </div>
         </div>
 
         {/* Mobile inline data table */}
-        <section className="relative z-10 -mt-px w-full px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-4 sm:hidden">
+        <section
+          ref={mobileDataTableRef}
+          className="relative z-10 -mt-px w-full scroll-mt-20 px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-5 sm:hidden"
+        >
           <div className="w-full">
             <DataTablePanel
               year={selectedYear}

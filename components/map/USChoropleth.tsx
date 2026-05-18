@@ -150,15 +150,17 @@ export function USChoropleth({
     viewport.height * 0.4,
   );
   const [projectedGulfLabelX, projectedGulfLabelY] = getProjectedPoint(
-    isMobileViewport ? -90 : -92.1,
-    isMobileViewport ? 29.5 : 21.6,
-    viewport.width * (isMobileViewport ? 0.66 : 0.58),
-    viewport.height * (isMobileViewport ? 0.4 : 0.74),
+    -90,
+    29.5,
+    viewport.width * (isMobileViewport ? 0.66 : 0.62),
+    viewport.height * (isMobileViewport ? 0.4 : 0.78),
   );
-  const gulfLabelX = isMobileViewport ? projectedGulfLabelX + viewport.width * 0.02 : projectedGulfLabelX;
+  const gulfLabelX = isMobileViewport
+    ? projectedGulfLabelX + viewport.width * 0.02
+    : projectedGulfLabelX - viewport.width * 0.035;
   const gulfLabelY = isMobileViewport
     ? projectedGulfLabelY + Math.min(30, Math.max(20, viewport.width * 0.065))
-    : projectedGulfLabelY;
+    : projectedGulfLabelY + Math.min(72, Math.max(48, viewport.height * 0.08));
 
   return (
     <div className="relative h-full w-full">
