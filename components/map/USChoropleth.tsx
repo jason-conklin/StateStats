@@ -157,7 +157,7 @@ export function USChoropleth({
   );
   const gulfLabelX = isMobileViewport
     ? projectedGulfLabelX + viewport.width * 0.02
-    : projectedGulfLabelX - viewport.width * 0.035;
+    : projectedGulfLabelX - viewport.width * 0.02;
   const gulfLabelY = isMobileViewport
     ? projectedGulfLabelY + Math.min(30, Math.max(20, viewport.width * 0.065))
     : projectedGulfLabelY + Math.min(72, Math.max(48, viewport.height * 0.08));

@@ -770,11 +770,11 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                 )}
               </div>
 
-              <div className="pointer-events-auto absolute bottom-5 left-1/2 z-10 -translate-x-1/2 sm:hidden">
+              <div className="pointer-events-auto absolute bottom-8 left-1/2 z-10 -translate-x-1/2 sm:hidden">
                 <button
                   type="button"
                   onClick={handleViewMobileDataTable}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur-sm transition active:scale-[0.98] active:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-700/15 bg-transparent px-4 py-2 text-sm font-medium text-slate-700 shadow-[0_1px_8px_rgba(15,23,42,0.06)] backdrop-blur-[2px] transition hover:bg-white/20 active:scale-[0.98] active:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
                 >
                   <span>View data table</span>
                   <ArrowDown className="h-4 w-4 shrink-0" aria-hidden />
