@@ -340,8 +340,8 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
   }, [setTableOpen]);
 
   return (
-    <div className="w-full h-[calc(100vh-0px)] bg-slate-50">
-      <section className="relative w-full h-full">
+    <div className="w-full min-h-[100svh] bg-sky-100 md:h-[calc(100vh-0px)] md:min-h-0 md:bg-slate-50">
+      <section className="relative w-full min-h-[100svh] md:h-full md:min-h-0">
         <div className="pointer-events-none absolute inset-x-0 top-1 z-20 hidden md:block">
           <div className="mx-auto w-full max-w-[1100px] px-3">
             <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/55 px-3 py-2 shadow-sm backdrop-blur-md">
@@ -446,7 +446,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
           </div>
         </div>
         <div
-          className={`relative h-[calc(100vh-0px)] w-full ss-water ss-water--animate overflow-hidden transition-[padding] duration-200 flex flex-col ${
+          className={`relative flex min-h-[100svh] w-full flex-col overflow-x-hidden ss-water ss-water--animate transition-[padding] duration-200 md:h-[calc(100vh-0px)] md:min-h-0 md:overflow-hidden ${
             isTableOpen ? "md:pr-[392px]" : "md:pr-0"
           }`}
         >
@@ -627,7 +627,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
             </div>
           </div>
 
-          <div className="relative z-10 w-full flex-1 min-h-0 bg-transparent" ref={mapContainerRef}>
+          <div className="relative z-10 w-full flex-1 min-h-[68svh] bg-transparent sm:min-h-0" ref={mapContainerRef}>
             {colorScale ? (
               <div className="relative h-full">
                 <USChoropleth
@@ -673,14 +673,14 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
 
             {tooltipContent && tooltipStyle ? (
               <div
-                className="pointer-events-none absolute z-20 w-44 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_8px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm transition-all duration-150 ease-out sm:w-56"
+                className="pointer-events-none absolute z-20 w-40 rounded-xl border border-slate-200 bg-white/95 p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm transition-all duration-150 ease-out sm:w-56 sm:p-3"
                 style={tooltipStyle}
               >
-                <p className="text-base font-semibold text-slate-900">{tooltipContent.stateName}</p>
-                <p className="mt-1 text-lg font-bold text-emerald-700">
+                <p className="text-sm font-semibold text-slate-900 sm:text-base">{tooltipContent.stateName}</p>
+                <p className="mt-1 text-base font-bold text-emerald-700 sm:text-lg">
                   {formatMetricValue(tooltipContent.value, selectedMetric?.unit ?? undefined)}
                 </p>
-                <div className="my-2 h-px bg-slate-200" />
+                <div className="my-1.5 h-px bg-slate-200 sm:my-2" />
                 {tooltipContent.rank ? (
                   <p className="text-xs text-slate-500">Rank {tooltipContent.rank} / {states.length}</p>
                 ) : (
@@ -691,7 +691,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
 
             {/* Legend */}
             <div
-              className="pointer-events-auto absolute z-10 max-w-[70%] sm:max-w-full sm:w-60"
+              className="pointer-events-auto absolute z-10 w-60 max-w-[calc(100vw-2rem)] sm:max-w-full"
               style={{ left: legendPosition.x, top: legendPosition.y }}
             >
               <div className="relative">
@@ -721,33 +721,33 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
             {/* Pinned */}
               <div className="pointer-events-auto absolute bottom-16 right-2 sm:bottom-4 sm:right-4 z-10 max-w-full">
                 {pinnedCard && pinnedCard.state ? (
-                  <div className="flex w-36 sm:w-64 flex-col gap-1 rounded-lg border border-[color:var(--ss-green-mid)]/30 bg-white/95 p-1.5 sm:p-3 shadow-md backdrop-blur text-[9px] sm:text-xs">
+                  <div className="flex w-44 flex-col gap-1.5 rounded-xl border border-[color:var(--ss-green-mid)]/30 bg-white/95 p-2.5 text-xs shadow-md backdrop-blur sm:w-64 sm:gap-1 sm:p-3">
                     <div className="flex items-start justify-between gap-1">
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Pinned</p>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 sm:text-[9px] sm:tracking-[0.2em]">Pinned</p>
                       <button
                         type="button"
                         aria-label="Unpin state"
                         onClick={() => setPinnedStateId(null)}
-                        className="cursor-pointer text-xs leading-none text-slate-500 hover:text-slate-700"
+                        className="cursor-pointer text-sm leading-none text-slate-500 hover:text-slate-700 sm:text-xs"
                       >
                         ✕
                       </button>
                     </div>
-                    <div className="flex items-center justify-between gap-1">
-                      <div>
-                        <p className="text-[11px] sm:text-sm font-semibold text-slate-900 truncate">{pinnedCard.state.name}</p>
-                        <p className="text-[10px] text-slate-700">
+                    <div className="flex items-end justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-semibold text-slate-900 sm:text-sm">{pinnedCard.state.name}</p>
+                        <p className="text-sm text-slate-700 sm:text-[10px]">
                           {formatMetricValue(pinnedCard.value, selectedMetric?.unit ?? undefined)}
                         </p>
                         {pinnedCard.rank ? (
-                          <p className="text-[9px] sm:text-[11px] text-slate-500">Rank {pinnedCard.rank} / {states.length}</p>
+                          <p className="text-xs text-slate-500 sm:text-[11px]">Rank {pinnedCard.rank} / {states.length}</p>
                         ) : (
-                          <p className="text-[9px] sm:text-[11px] text-slate-500">No data</p>
+                          <p className="text-xs text-slate-500 sm:text-[11px]">No data</p>
                         )}
                       </div>
                       <Link
                         href={`/graph?metric=${selectedMetric?.id ?? ""}&states=${pinnedCard.state.abbreviation ?? pinnedCard.state.id}&startYear=${selectedYear}&endYear=${selectedYear}`}
-                        className="rounded-md border border-[color:var(--ss-green)] px-2 py-0.5 text-[9px] font-medium text-[color:var(--ss-green)] hover:bg-[color:var(--ss-green-light)]"
+                        className="shrink-0 rounded-lg border border-[color:var(--ss-green)] px-2 py-1 text-[10px] font-medium leading-tight text-[color:var(--ss-green)] hover:bg-[color:var(--ss-green-light)] sm:rounded-md sm:py-0.5 sm:text-[9px]"
                       >
                         Add to compare
                       </Link>
@@ -763,8 +763,8 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
         </div>
 
         {/* Mobile inline data table */}
-        <section className="sm:hidden mt-4 w-full px-3 pb-16">
-          <div className="w-full rounded-t-3xl bg-white shadow-sm">
+        <section className="relative z-10 -mt-px w-full px-3 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-4 sm:hidden">
+          <div className="w-full">
             <DataTablePanel
               year={selectedYear}
               metrics={metrics}

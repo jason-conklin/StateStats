@@ -90,6 +90,7 @@ function getYAxisWidth(
   yDomain: readonly [number, number],
   metricUnit: string | null | undefined,
   normalization: "raw" | "indexed",
+  isMobileChart: boolean,
 ) {
   const [domainMin, domainMax] = yDomain;
   const candidates = [domainMin, (domainMin + domainMax) / 2, domainMax];
@@ -101,6 +102,10 @@ function getYAxisWidth(
       }).length,
     ),
   );
+
+  if (isMobileChart) {
+    return Math.min(72, Math.max(46, longestLabelLength * 7 + 8));
+  }
 
   return Math.min(118, Math.max(58, longestLabelLength * 8 + 16));
 }
@@ -159,6 +164,12 @@ export default function GraphInner({
   const isZoomed = visibleStartIndex !== 0 || visibleEndIndex !== maxIndex;
   const visibleStartYear = visibleData[0]?.year ?? 0;
   const visibleEndYear = visibleData[visibleData.length - 1]?.year ?? visibleStartYear;
+  const isMobileChart = chartWidth > 0 && chartWidth < 640;
+  const chartMargin = isMobileChart
+    ? { left: 0, right: 4, top: 12, bottom: 4 }
+    : { left: 4, right: 14, top: 16, bottom: 8 };
+  const axisTickFontSize = isMobileChart ? 11 : 12;
+  const yAxisTickMargin = isMobileChart ? 4 : 10;
   const visibleRangeLabel =
     visibleData.length > 0 ? `${visibleStartYear}\u2013${visibleEndYear}` : null;
   const statesById = useMemo(() => new Map(states.map((state) => [state.id, state])), [states]);
@@ -167,8 +178,8 @@ export default function GraphInner({
     [selectedStateIds, visibleData],
   );
   const yAxisWidth = useMemo(
-    () => getYAxisWidth(yDomain, metricUnit, normalization),
-    [metricUnit, normalization, yDomain],
+    () => getYAxisWidth(yDomain, metricUnit, normalization, isMobileChart),
+    [isMobileChart, metricUnit, normalization, yDomain],
   );
   const yAxisTickFormatter = useMemo(
     () => (value: number) =>
@@ -389,7 +400,7 @@ export default function GraphInner({
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={visibleData}
-          margin={{ left: 4, right: 14, top: 16, bottom: 8 }}
+          margin={chartMargin}
           onMouseLeave={hideHoverTooltip}
         >
           <CartesianGrid
@@ -410,7 +421,7 @@ export default function GraphInner({
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tick={{ fontSize: 12, fill: "#475569" }}
+            tick={{ fontSize: axisTickFontSize, fill: "#475569" }}
             tickFormatter={xAxisTickFormatter}
             padding={{ left: 0, right: 0 }}
           />
@@ -421,8 +432,8 @@ export default function GraphInner({
             tickFormatter={yAxisTickFormatter}
             tickLine={false}
             axisLine={false}
-            tickMargin={10}
-            tick={{ fontSize: 12, fill: "#475569" }}
+            tickMargin={yAxisTickMargin}
+            tick={{ fontSize: axisTickFontSize, fill: "#475569" }}
           />
           <Tooltip
             content={

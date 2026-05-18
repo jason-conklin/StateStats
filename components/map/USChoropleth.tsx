@@ -135,8 +135,9 @@ export function USChoropleth({
   };
 
   const preserveAspectRatio = viewport.width < 640 ? "xMidYMin meet" : "xMidYMid meet";
-  const showSideOceanLabels = viewport.width >= 768;
-  const showGulfLabel = viewport.width >= 1024;
+  const isMobileViewport = viewport.width < 640;
+  const sideOceanLabelSize = isMobileViewport ? 11 : 18;
+  const gulfLabelSize = isMobileViewport ? 10 : 14;
   const getProjectedPoint = (longitude: number, latitude: number, fallbackX: number, fallbackY: number) => {
     const projected = projection([longitude, latitude]);
     return projected ?? [fallbackX, fallbackY];
@@ -165,45 +166,42 @@ export function USChoropleth({
           transform={`translate(${mapTransform.x} ${mapTransform.y}) scale(${mapTransform.scale})`}
           className="[will-change:transform]"
         >
-          {showSideOceanLabels ? (
-            <>
-              <text
-                x={pacificLabelX}
-                y={pacificLabelY}
-                transform={`rotate(-90 ${pacificLabelX} ${pacificLabelY})`}
-                pointerEvents="none"
-                aria-hidden="true"
-                textAnchor="middle"
-                className="select-none fill-sky-950/30 font-serif text-[18px] italic tracking-[0.18em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.22)]"
-              >
-                Pacific Ocean
-              </text>
-              <text
-                x={atlanticLabelX}
-                y={atlanticLabelY}
-                transform={`rotate(90 ${atlanticLabelX} ${atlanticLabelY})`}
-                pointerEvents="none"
-                aria-hidden="true"
-                textAnchor="middle"
-                className="select-none fill-sky-950/30 font-serif text-[18px] italic tracking-[0.18em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.22)]"
-              >
-                Atlantic Ocean
-              </text>
-            </>
-          ) : null}
-          {showGulfLabel ? (
-            <text
-              x={gulfLabelX}
-              y={gulfLabelY}
-              transform={`rotate(-10 ${gulfLabelX} ${gulfLabelY})`}
-              pointerEvents="none"
-              aria-hidden="true"
-              textAnchor="middle"
-              className="select-none fill-sky-950/30 font-serif text-[14px] italic tracking-[0.14em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.22)]"
-            >
-              Gulf of Mexico
-            </text>
-          ) : null}
+          <text
+            x={pacificLabelX}
+            y={pacificLabelY}
+            transform={`rotate(-90 ${pacificLabelX} ${pacificLabelY})`}
+            pointerEvents="none"
+            aria-hidden="true"
+            textAnchor="middle"
+            style={{ fontSize: sideOceanLabelSize }}
+            className="select-none fill-sky-950/25 font-serif italic tracking-[0.12em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
+          >
+            Pacific Ocean
+          </text>
+          <text
+            x={atlanticLabelX}
+            y={atlanticLabelY}
+            transform={`rotate(90 ${atlanticLabelX} ${atlanticLabelY})`}
+            pointerEvents="none"
+            aria-hidden="true"
+            textAnchor="middle"
+            style={{ fontSize: sideOceanLabelSize }}
+            className="select-none fill-sky-950/25 font-serif italic tracking-[0.12em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
+          >
+            Atlantic Ocean
+          </text>
+          <text
+            x={gulfLabelX}
+            y={gulfLabelY}
+            transform={`rotate(-10 ${gulfLabelX} ${gulfLabelY})`}
+            pointerEvents="none"
+            aria-hidden="true"
+            textAnchor="middle"
+            style={{ fontSize: gulfLabelSize }}
+            className="select-none fill-sky-950/25 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.14em]"
+          >
+            Gulf of Mexico
+          </text>
           {features.map((feat) => {
             const stateId = (feat.id as string) ?? feat.properties?.stateId ?? "";
             const value = valuesByStateId[stateId] ?? null;

@@ -23,7 +23,7 @@ export function Legend(props: LegendProps) {
   const unitLabel = props.unitLabel ?? undefined;
 
   return (
-    <div className="w-full max-w-[480px] rounded-xl border border-slate-200 bg-white/95 p-2 shadow-[0_8px_20px_rgba(0,0,0,0.1)] backdrop-blur-sm sm:max-w-full">
+    <div className="w-full max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_8px_20px_rgba(0,0,0,0.1)] backdrop-blur-sm sm:max-w-full sm:p-2">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-[color:var(--ss-green-dark)]">Legend</p>
         {props.unitLabel ? <span className="text-xs text-slate-500">{props.unitLabel}</span> : null}
@@ -52,7 +52,7 @@ export function Legend(props: LegendProps) {
             className="h-2 rounded-md border border-[color:var(--ss-green-mid)]/50 shadow-inner"
             style={{ backgroundImage: props.gradient }}
           />
-          <div className="flex items-center justify-between gap-3 text-[11px] text-slate-600 sm:text-xs">
+          <div className="flex items-center justify-between gap-4 text-xs text-slate-600">
             <span className="min-w-0 flex-1 text-left tabular-nums">
               <span className="sm:hidden">
                 {domainMin !== null ? formatMetricValue(domainMin, unitLabel, { compact: true }) : "–"}

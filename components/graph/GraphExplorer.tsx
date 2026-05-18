@@ -206,7 +206,7 @@ export function GraphExplorer({
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
-      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="h-auto min-h-fit space-y-5 overflow-visible rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:space-y-4 md:rounded-2xl md:p-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Controls</p>
           <h2 className="text-lg font-semibold text-slate-900">Metric & States</h2>
@@ -257,7 +257,7 @@ export function GraphExplorer({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2" role="listbox" aria-label="Select states">
+          <div className="max-h-[320px] space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2 md:max-h-56" role="listbox" aria-label="Select states">
             {filteredStates.map((state) => {
               const checked = selectedStateIds.includes(state.id);
               return (
@@ -354,11 +354,11 @@ export function GraphExplorer({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:rounded-2xl">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Chart</p>
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-[26px] font-semibold leading-tight text-slate-900 md:text-xl">
               State comparison{selectedMetric?.name ? `: ${selectedMetric.name}` : ""}
             </h2>
             <p className="text-xs text-slate-500">
@@ -387,7 +387,7 @@ export function GraphExplorer({
             No data available for this metric.
           </div>
         ) : (
-          <div className="mt-4 h-[420px] w-full min-w-0">
+          <div className="mt-3 h-[400px] w-full min-w-0 sm:h-[430px] md:mt-4 md:h-[420px]">
             <ChartContainer
               key={chartInstanceKey}
               chartData={chartData}

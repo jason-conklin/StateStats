@@ -143,7 +143,7 @@ export default async function GraphPage(props: GraphPageProps) {
     const normalization = modeParam === "indexed" ? "indexed" : "raw";
 
     return (
-      <div className="h-full w-full overflow-y-auto bg-sky-50 p-4 md:bg-slate-950 md:bg-opacity-90 md:p-6">
+      <div className="min-h-[100svh] w-full overflow-y-auto bg-sky-50 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:h-full md:min-h-0 md:bg-slate-950 md:bg-opacity-90 md:p-6">
         <section className="space-y-4 md:space-y-6">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -157,7 +157,7 @@ export default async function GraphPage(props: GraphPageProps) {
               compare relative changes.
             </p>
           </div>
-          <div className="h-[65vh] md:h-[70vh] rounded-2xl border border-slate-200 bg-white p-4 shadow-md md:bg-slate-900 md:border-slate-700 md:shadow-lg">
+          <div className="h-auto overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-md md:h-[70vh] md:overflow-hidden md:border-slate-700 md:bg-slate-900 md:shadow-lg">
             <GraphExplorer
               metrics={metrics.map((m) => ({
                 id: m.id,
