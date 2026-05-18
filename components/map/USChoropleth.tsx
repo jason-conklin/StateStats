@@ -136,15 +136,25 @@ export function USChoropleth({
 
   const preserveAspectRatio = viewport.width < 640 ? "xMidYMin meet" : "xMidYMid meet";
   const isMobileViewport = viewport.width < 640;
-  const sideOceanLabelSize = isMobileViewport ? 11 : 18;
-  const gulfLabelSize = isMobileViewport ? 10 : 14;
+  const sideOceanLabelSize = isMobileViewport ? 10 : 18;
+  const gulfLabelSize = isMobileViewport ? 9 : 14;
   const getProjectedPoint = (longitude: number, latitude: number, fallbackX: number, fallbackY: number) => {
     const projected = projection([longitude, latitude]);
     return projected ?? [fallbackX, fallbackY];
   };
   const [pacificLabelX, pacificLabelY] = getProjectedPoint(-127.2, 35.6, viewport.width * 0.08, viewport.height * 0.39);
-  const [atlanticLabelX, atlanticLabelY] = getProjectedPoint(-67.8, 36.2, viewport.width * 0.93, viewport.height * 0.4);
-  const [gulfLabelX, gulfLabelY] = getProjectedPoint(-92.1, 21.6, viewport.width * 0.62, viewport.height * 0.9);
+  const [atlanticLabelX, atlanticLabelY] = getProjectedPoint(
+    isMobileViewport ? -70.6 : -67.8,
+    36.2,
+    viewport.width * (isMobileViewport ? 0.89 : 0.93),
+    viewport.height * 0.4,
+  );
+  const [gulfLabelX, gulfLabelY] = getProjectedPoint(
+    isMobileViewport ? -91.7 : -92.1,
+    isMobileViewport ? 23.1 : 21.6,
+    viewport.width * 0.58,
+    viewport.height * 0.74,
+  );
 
   return (
     <div className="relative h-full w-full">
@@ -174,7 +184,7 @@ export function USChoropleth({
             aria-hidden="true"
             textAnchor="middle"
             style={{ fontSize: sideOceanLabelSize }}
-            className="select-none fill-sky-950/25 font-serif italic tracking-[0.12em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
+            className="select-none fill-sky-950/20 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
           >
             Pacific Ocean
           </text>
@@ -186,7 +196,7 @@ export function USChoropleth({
             aria-hidden="true"
             textAnchor="middle"
             style={{ fontSize: sideOceanLabelSize }}
-            className="select-none fill-sky-950/25 font-serif italic tracking-[0.12em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
+            className="select-none fill-sky-950/20 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
           >
             Atlantic Ocean
           </text>
@@ -198,7 +208,7 @@ export function USChoropleth({
             aria-hidden="true"
             textAnchor="middle"
             style={{ fontSize: gulfLabelSize }}
-            className="select-none fill-sky-950/25 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.14em]"
+            className="select-none fill-sky-950/20 font-serif italic tracking-[0.08em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.14em]"
           >
             Gulf of Mexico
           </text>

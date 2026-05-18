@@ -691,7 +691,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
 
             {/* Legend */}
             <div
-              className="pointer-events-auto absolute z-10 w-60 max-w-[calc(100vw-2rem)] sm:max-w-full"
+              className="pointer-events-auto absolute z-10 w-48 max-w-[calc(100vw-2rem)] sm:w-60 sm:max-w-full"
               style={{ left: legendPosition.x, top: legendPosition.y }}
             >
               <div className="relative">
