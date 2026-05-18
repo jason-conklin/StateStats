@@ -149,12 +149,16 @@ export function USChoropleth({
     viewport.width * (isMobileViewport ? 0.89 : 0.93),
     viewport.height * 0.4,
   );
-  const [gulfLabelX, gulfLabelY] = getProjectedPoint(
-    isMobileViewport ? -91.7 : -92.1,
-    isMobileViewport ? 23.1 : 21.6,
-    viewport.width * 0.58,
-    viewport.height * 0.74,
+  const [projectedGulfLabelX, projectedGulfLabelY] = getProjectedPoint(
+    isMobileViewport ? -90 : -92.1,
+    isMobileViewport ? 29.5 : 21.6,
+    viewport.width * (isMobileViewport ? 0.66 : 0.58),
+    viewport.height * (isMobileViewport ? 0.4 : 0.74),
   );
+  const gulfLabelX = isMobileViewport ? projectedGulfLabelX + viewport.width * 0.02 : projectedGulfLabelX;
+  const gulfLabelY = isMobileViewport
+    ? projectedGulfLabelY + Math.min(30, Math.max(20, viewport.width * 0.065))
+    : projectedGulfLabelY;
 
   return (
     <div className="relative h-full w-full">
@@ -176,42 +180,6 @@ export function USChoropleth({
           transform={`translate(${mapTransform.x} ${mapTransform.y}) scale(${mapTransform.scale})`}
           className="[will-change:transform]"
         >
-          <text
-            x={pacificLabelX}
-            y={pacificLabelY}
-            transform={`rotate(-90 ${pacificLabelX} ${pacificLabelY})`}
-            pointerEvents="none"
-            aria-hidden="true"
-            textAnchor="middle"
-            style={{ fontSize: sideOceanLabelSize }}
-            className="select-none fill-sky-950/20 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
-          >
-            Pacific Ocean
-          </text>
-          <text
-            x={atlanticLabelX}
-            y={atlanticLabelY}
-            transform={`rotate(90 ${atlanticLabelX} ${atlanticLabelY})`}
-            pointerEvents="none"
-            aria-hidden="true"
-            textAnchor="middle"
-            style={{ fontSize: sideOceanLabelSize }}
-            className="select-none fill-sky-950/20 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
-          >
-            Atlantic Ocean
-          </text>
-          <text
-            x={gulfLabelX}
-            y={gulfLabelY}
-            transform={`rotate(-10 ${gulfLabelX} ${gulfLabelY})`}
-            pointerEvents="none"
-            aria-hidden="true"
-            textAnchor="middle"
-            style={{ fontSize: gulfLabelSize }}
-            className="select-none fill-sky-950/20 font-serif italic tracking-[0.08em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.14em]"
-          >
-            Gulf of Mexico
-          </text>
           {features.map((feat) => {
             const stateId = (feat.id as string) ?? feat.properties?.stateId ?? "";
             const value = valuesByStateId[stateId] ?? null;
@@ -256,6 +224,38 @@ export function USChoropleth({
             strokeWidth={0.5}
             vectorEffect="non-scaling-stroke"
           />
+          <g pointerEvents="none" aria-hidden="true">
+            <text
+              x={pacificLabelX}
+              y={pacificLabelY}
+              transform={`rotate(-90 ${pacificLabelX} ${pacificLabelY})`}
+              textAnchor="middle"
+              style={{ fontSize: sideOceanLabelSize }}
+              className="select-none fill-sky-950/20 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
+            >
+              Pacific Ocean
+            </text>
+            <text
+              x={atlanticLabelX}
+              y={atlanticLabelY}
+              transform={`rotate(90 ${atlanticLabelX} ${atlanticLabelY})`}
+              textAnchor="middle"
+              style={{ fontSize: sideOceanLabelSize }}
+              className="select-none fill-sky-950/20 font-serif italic tracking-[0.1em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.18em]"
+            >
+              Atlantic Ocean
+            </text>
+            <text
+              x={gulfLabelX}
+              y={gulfLabelY}
+              transform={`rotate(-10 ${gulfLabelX} ${gulfLabelY})`}
+              textAnchor="middle"
+              style={{ fontSize: gulfLabelSize }}
+              className="select-none fill-sky-950/25 font-serif italic tracking-[0.08em] drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)] sm:fill-sky-950/30 sm:tracking-[0.14em]"
+            >
+              Gulf of Mexico
+            </text>
+          </g>
         </g>
       </svg>
     </div>
