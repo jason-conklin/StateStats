@@ -223,6 +223,7 @@ export function USChoropleth({
   const gulfLabelY = isMobileViewport
     ? projectedGulfLabelY + Math.min(30, Math.max(20, viewport.width * 0.065))
     : projectedGulfLabelY + Math.min(72, Math.max(48, viewport.height * 0.08));
+  const highlightedStateIds = Array.from(new Set([pinnedStateId, hoveredStateId].filter((id): id is string => Boolean(id))));
 
   return (
     <div className="relative h-full w-full">
@@ -268,9 +269,6 @@ export function USChoropleth({
               const value = valuesByStateId[stateId] ?? null;
               const fill = colorScale(value);
               const d = path(feat) ?? undefined;
-              const isPinned = stateId === pinnedStateId;
-              const isHovered = stateId === hoveredStateId;
-              const isHighlighted = isHovered || isPinned;
               const borderStyle = getStateBorderStyle(fill);
 
               return (
@@ -278,9 +276,9 @@ export function USChoropleth({
                   key={stateId}
                   d={d}
                   fill={fill}
-                  stroke={isHighlighted ? "#ffffff" : borderStyle.stroke}
-                  strokeOpacity={isHighlighted ? 1 : borderStyle.strokeOpacity}
-                  strokeWidth={isPinned ? 2.6 : isHovered ? 1.9 : borderStyle.strokeWidth}
+                  stroke={borderStyle.stroke}
+                  strokeOpacity={borderStyle.strokeOpacity}
+                  strokeWidth={borderStyle.strokeWidth}
                   vectorEffect="non-scaling-stroke"
                   strokeLinejoin="round"
                   strokeLinecap="round"
@@ -299,6 +297,36 @@ export function USChoropleth({
                   tabIndex={0}
                   role="button"
                   aria-label={`${feat.properties?.name ?? stateId}: ${value ?? "No data"}`}
+                />
+              );
+            })}
+          </g>
+          <g className="hover-highlight-layer" pointerEvents="none" aria-hidden="true">
+            {highlightedStateIds.map((stateId) => {
+              const feat = features.find((feature) => {
+                const featureStateId = (feature.id as string) ?? feature.properties?.stateId ?? "";
+                return featureStateId === stateId;
+              });
+              if (!feat) return null;
+
+              const value = valuesByStateId[stateId] ?? null;
+              const fill = colorScale(value);
+              const borderStyle = getStateBorderStyle(fill);
+              const isPinned = stateId === pinnedStateId;
+              const isHovered = stateId === hoveredStateId;
+              const highlightStrokeWidth = isPinned && isHovered ? 2.8 : isHovered ? 2.45 : 2.25;
+
+              return (
+                <path
+                  key={`highlight-${stateId}`}
+                  d={path(feat) ?? undefined}
+                  fill="none"
+                  stroke={borderStyle.stroke}
+                  strokeOpacity={Math.min(1, borderStyle.strokeOpacity + 0.08)}
+                  strokeWidth={highlightStrokeWidth}
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
                 />
               );
             })}
