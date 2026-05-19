@@ -157,7 +157,7 @@ export default async function GraphPage(props: GraphPageProps) {
               compare relative changes.
             </p>
           </div>
-          <div className="h-auto overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-md md:h-[70vh] md:overflow-hidden md:border-slate-700 md:bg-slate-900 md:shadow-lg">
+          <div className="h-auto overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-md md:min-h-[calc(100vh-13rem)] md:overflow-visible md:border-slate-700 md:bg-slate-900 md:shadow-lg xl:min-h-[calc(100vh-12rem)]">
             <GraphExplorer
               metrics={metrics.map((m) => ({
                 id: m.id,

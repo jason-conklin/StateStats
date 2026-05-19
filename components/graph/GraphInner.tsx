@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent } from "react";
 import { RotateCcw } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { StateInfo } from "@/lib/types";
@@ -28,6 +28,21 @@ type PanSession = {
   initialStartIndex: number;
   pointerId: number;
   startClientX: number;
+};
+
+type LockedInspection = {
+  pointerId: number;
+  stateId: string;
+  tooltipX: number;
+  tooltipY: number;
+  value: number | null;
+  year: number;
+};
+
+type LockedDotProps = {
+  cx?: number;
+  cy?: number;
+  payload?: ChartDataRow;
 };
 
 const MIN_VISIBLE_POINTS = 3;
@@ -122,6 +137,7 @@ export default function GraphInner({
   const panSessionRef = useRef<PanSession | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [hoveredStateId, setHoveredStateId] = useState<string | null>(null);
+  const [lockedInspection, setLockedInspection] = useState<LockedInspection | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [chartWidth, setChartWidth] = useState(0);
   const [zoomWindow, setZoomWindow] = useState<ZoomWindow>({
@@ -217,6 +233,74 @@ export default function GraphInner({
     },
     [visibleEndYear, visibleStartYear],
   );
+  const getNearestInspectionPoint = useCallback(
+    (stateId: string, clientX: number): Omit<LockedInspection, "pointerId" | "stateId"> | null => {
+      const chartElement = chartAreaRef.current;
+      if (!chartElement || !visibleData.length) return null;
+
+      const rect = chartElement.getBoundingClientRect();
+      const plotLeft = yAxisWidth + chartMargin.left;
+      const plotRight = Math.max(plotLeft + 1, rect.width - chartMargin.right);
+      const plotWidth = plotRight - plotLeft;
+      const relativeX = clamp((clientX - rect.left - plotLeft) / plotWidth, 0, 1);
+      const targetYear = visibleStartYear + relativeX * Math.max(visibleEndYear - visibleStartYear, 1);
+      const nearestRow = visibleData.reduce((nearest, row) => {
+        return Math.abs(row.year - targetYear) < Math.abs(nearest.year - targetYear) ? row : nearest;
+      }, visibleData[0]);
+      const nearestRelativeX =
+        visibleEndYear === visibleStartYear
+          ? 0
+          : clamp((nearestRow.year - visibleStartYear) / (visibleEndYear - visibleStartYear), 0, 1);
+      const tooltipWidth = isMobileChart ? 224 : 240;
+      const tooltipHeight = 116;
+      const value = nearestRow[stateId];
+      const [domainMin, domainMax] = yDomain;
+      const usableHeight = Math.max(80, rect.height - chartMargin.top - chartMargin.bottom - 34);
+      const valueRatio =
+        typeof value === "number" && Number.isFinite(value) && domainMax !== domainMin
+          ? clamp((domainMax - value) / (domainMax - domainMin), 0, 1)
+          : 0.35;
+      const pointX = plotLeft + nearestRelativeX * plotWidth;
+      const pointY = chartMargin.top + valueRatio * usableHeight;
+
+      return {
+        year: nearestRow.year,
+        value: typeof value === "number" && Number.isFinite(value) ? value : null,
+        tooltipX: clamp(pointX + 14, 8, Math.max(8, rect.width - tooltipWidth - 8)),
+        tooltipY: clamp(pointY - tooltipHeight - 10, 8, Math.max(8, rect.height - tooltipHeight - 8)),
+      };
+    },
+    [
+      chartMargin.bottom,
+      chartMargin.left,
+      chartMargin.right,
+      chartMargin.top,
+      isMobileChart,
+      visibleData,
+      visibleEndYear,
+      visibleStartYear,
+      yAxisWidth,
+      yDomain,
+    ],
+  );
+  const startLineInspection = useCallback(
+    (stateId: string, event: ReactPointerEvent<Element>) => {
+      if (event.button !== 0 || event.pointerType !== "mouse") return;
+      const inspectionPoint = getNearestInspectionPoint(stateId, event.clientX);
+      if (!inspectionPoint || !chartAreaRef.current) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      chartAreaRef.current.setPointerCapture(event.pointerId);
+      setHoveredStateId(stateId);
+      setLockedInspection({
+        ...inspectionPoint,
+        pointerId: event.pointerId,
+        stateId,
+      });
+    },
+    [getNearestInspectionPoint],
+  );
 
   const handleResetZoom = useCallback(() => {
     setZoomWindow({
@@ -227,6 +311,7 @@ export default function GraphInner({
 
   const handleWheelZoom = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
+      if (lockedInspection) return;
       if (!chartAreaRef.current || chartData.length <= MIN_VISIBLE_POINTS) return;
 
       event.preventDefault();
@@ -266,12 +351,13 @@ export default function GraphInner({
         return { startIndex: nextStart, endIndex: nextEnd };
       });
     },
-    [chartData.length, maxIndex],
+    [chartData.length, lockedInspection, maxIndex],
   );
 
   const hideHoverTooltip = useCallback(() => {
+    if (lockedInspection) return;
     setHoveredStateId(null);
-  }, []);
+  }, [lockedInspection]);
 
   const endPan = useCallback((pointerId?: number) => {
     const session = panSessionRef.current;
@@ -289,8 +375,27 @@ export default function GraphInner({
     setIsPanning(false);
   }, []);
 
+  const endLineInspection = useCallback(
+    (pointerId?: number) => {
+      if (!lockedInspection) return false;
+      if (pointerId !== undefined && lockedInspection.pointerId !== pointerId) return false;
+
+      if (chartAreaRef.current?.hasPointerCapture(lockedInspection.pointerId)) {
+        chartAreaRef.current.releasePointerCapture(lockedInspection.pointerId);
+      }
+
+      setLockedInspection(null);
+      return true;
+    },
+    [lockedInspection],
+  );
+
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (hoveredStateId) {
+        startLineInspection(hoveredStateId, event);
+        return;
+      }
       if (!isZoomed || event.button !== 0 || event.pointerType !== "mouse") return;
       if (!chartAreaRef.current) return;
 
@@ -310,11 +415,27 @@ export default function GraphInner({
       setIsPanning(true);
       hideHoverTooltip();
     },
-    [hideHoverTooltip, isZoomed, maxIndex, zoomWindow.endIndex, zoomWindow.startIndex],
+    [hideHoverTooltip, hoveredStateId, isZoomed, maxIndex, startLineInspection, zoomWindow.endIndex, zoomWindow.startIndex],
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (lockedInspection?.pointerId === event.pointerId) {
+        const inspectionPoint = getNearestInspectionPoint(lockedInspection.stateId, event.clientX);
+        if (!inspectionPoint) return;
+
+        event.preventDefault();
+        setHoveredStateId(lockedInspection.stateId);
+        setLockedInspection((previous) => {
+          if (!previous || previous.pointerId !== event.pointerId) return previous;
+          return {
+            ...previous,
+            ...inspectionPoint,
+          };
+        });
+        return;
+      }
+
       const session = panSessionRef.current;
       if (!session || session.pointerId !== event.pointerId || !chartAreaRef.current) return;
 
@@ -340,14 +461,15 @@ export default function GraphInner({
         return { startIndex: nextStart, endIndex: nextEnd };
       });
     },
-    [chartData.length],
+    [chartData.length, getNearestInspectionPoint, lockedInspection],
   );
 
   const handlePointerUp = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (endLineInspection(event.pointerId)) return;
       endPan(event.pointerId);
     },
-    [endPan],
+    [endLineInspection, endPan],
   );
 
   useEffect(() => {
@@ -355,20 +477,35 @@ export default function GraphInner({
   }, [isZoomed, onZoomChange]);
 
   useEffect(() => {
+    if (!lockedInspection) return;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [lockedInspection]);
+
+  useEffect(() => {
     return () => {
       resizeObserverRef.current?.disconnect();
     };
   }, []);
 
+  const activeSeriesId = lockedInspection?.stateId ?? hoveredStateId;
+  const lockedState = lockedInspection ? statesById.get(lockedInspection.stateId) : null;
+  const lockedSeriesStyle = lockedInspection ? getStateSeriesStyle(lockedInspection.stateId) : null;
+
   return (
     <div
       ref={setChartAreaNode}
       className={`relative h-full w-full ${
-        isZoomed
-          ? isPanning
-            ? "cursor-grabbing select-none [&_*]:cursor-grabbing"
-            : "cursor-grab [&_*]:cursor-grab"
-          : ""
+        lockedInspection
+          ? "cursor-ew-resize select-none [&_*]:cursor-ew-resize [&_*]:select-none"
+          : isZoomed
+            ? isPanning
+              ? "cursor-grabbing select-none [&_*]:cursor-grabbing"
+              : "cursor-grab [&_*]:cursor-grab"
+            : ""
       }`}
       onWheel={handleWheelZoom}
       onPointerDown={handlePointerDown}
@@ -394,6 +531,32 @@ export default function GraphInner({
             <RotateCcw className="h-3.5 w-3.5" aria-hidden />
             <span>Reset zoom</span>
           </button>
+        </div>
+      ) : null}
+
+      {lockedInspection ? (
+        <div
+          className="pointer-events-none absolute z-30 w-56 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:w-60"
+          style={{ left: lockedInspection.tooltipX, top: lockedInspection.tooltipY }}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Year {lockedInspection.year}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ backgroundColor: lockedSeriesStyle?.color ?? "#0f172a" }}
+              aria-hidden
+            />
+            <p className="text-sm font-semibold text-slate-900">
+              {lockedState?.name ?? lockedInspection.stateId}
+            </p>
+          </div>
+          <p className="mt-2 text-lg font-semibold text-slate-900">
+            {lockedInspection.value === null
+              ? "No data"
+              : formatMetricValue(lockedInspection.value, metricUnit ?? undefined, { mode: normalization })}
+          </p>
         </div>
       ) : null}
 
@@ -438,7 +601,7 @@ export default function GraphInner({
           <Tooltip
             content={
               <TooltipContent
-                hoveredStateId={hoveredStateId}
+                hoveredStateId={lockedInspection ? null : hoveredStateId}
                 metricUnit={metricUnit}
                 normalization={normalization}
               />
@@ -452,7 +615,15 @@ export default function GraphInner({
           {selectedStateIds.flatMap((stateId) => {
             const state = statesById.get(stateId);
             const { color, dashArray } = getStateSeriesStyle(stateId);
-            const isHovered = hoveredStateId === stateId;
+            const isActive = activeSeriesId === stateId;
+            const isLocked = lockedInspection?.stateId === stateId;
+            const renderLockedDot = ({ cx, cy, payload }: LockedDotProps) => {
+              if (!isLocked || payload?.year !== lockedInspection?.year || typeof cx !== "number" || typeof cy !== "number") {
+                return <g />;
+              }
+
+              return <circle cx={cx} cy={cy} r={4.5} fill={color} stroke="#ffffff" strokeWidth={2} />;
+            };
 
             return [
               <Line
@@ -467,15 +638,21 @@ export default function GraphInner({
                   activeDot={false}
                   isAnimationActive={false}
                   connectNulls
+                  onPointerDown={(_, event) => {
+                    startLineInspection(stateId, event);
+                  }}
                   onMouseEnter={() => {
                     if (panSessionRef.current) return;
+                    if (lockedInspection) return;
                     setHoveredStateId(stateId);
                   }}
                   onMouseMove={() => {
                     if (panSessionRef.current) return;
+                    if (lockedInspection) return;
                     setHoveredStateId(stateId);
                   }}
                   onMouseLeave={() => {
+                    if (lockedInspection) return;
                     setHoveredStateId((previous) => (previous === stateId ? null : previous));
                   }}
                 />,
@@ -485,22 +662,25 @@ export default function GraphInner({
                   dataKey={stateId}
                   name={state?.name ?? stateId}
                   stroke={color}
-                  strokeWidth={isHovered ? 3 : baseStrokeWidth}
+                  strokeWidth={isLocked ? 3.3 : isActive ? 3 : baseStrokeWidth}
                   strokeDasharray={dashArray}
-                  strokeOpacity={hoveredStateId ? (isHovered ? 1 : 0.2) : 0.94}
-                  dot={false}
+                  strokeOpacity={activeSeriesId ? (isActive ? 1 : lockedInspection ? 0.28 : 0.2) : 0.94}
+                  dot={isLocked ? renderLockedDot : false}
                   activeDot={
-                    isHovered
-                      ? {
+                    isActive && !lockedInspection
+                        ? {
                           r: 4,
                           strokeWidth: 0,
                           fill: color,
+                          pointerEvents: "none",
                           onMouseEnter: () => {
                             if (panSessionRef.current) return;
+                            if (lockedInspection) return;
                             setHoveredStateId(stateId);
                           },
                           onMouseMove: () => {
                             if (panSessionRef.current) return;
+                            if (lockedInspection) return;
                             setHoveredStateId(stateId);
                           },
                         }

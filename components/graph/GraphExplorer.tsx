@@ -205,7 +205,7 @@ export function GraphExplorer({
   ].join("|");
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+    <div className="grid h-full min-h-full gap-4 lg:grid-cols-[320px_1fr]">
       <div className="h-auto min-h-fit space-y-5 overflow-visible rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:space-y-4 md:rounded-2xl md:p-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Controls</p>
