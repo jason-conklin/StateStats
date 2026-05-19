@@ -567,7 +567,7 @@ export default function GraphInner({
           onMouseLeave={hideHoverTooltip}
         >
           <CartesianGrid
-            stroke="rgba(148, 163, 184, 0.34)"
+            stroke="rgba(100, 116, 139, 0.46)"
             strokeDasharray="4 6"
             vertical
             verticalCoordinatesGenerator={verticalGridCoordinatesGenerator}
