@@ -26,6 +26,66 @@ type Props = {
   consumeClickSuppressed?: () => boolean;
 };
 
+type RgbColor = {
+  r: number;
+  g: number;
+  b: number;
+};
+
+const PALE_FILL_LUMINANCE_THRESHOLD = 0.86;
+const DEFAULT_STATE_BORDER = {
+  stroke: "#f3fbf7",
+  strokeOpacity: 0.82,
+  strokeWidth: 0.75,
+};
+const PALE_STATE_BORDER = {
+  stroke: "#9fb7af",
+  strokeOpacity: 0.9,
+  strokeWidth: 0.85,
+};
+
+function parseMapColor(color: string): RgbColor | null {
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const raw = hex[1];
+    const normalized =
+      raw.length === 3
+        ? raw
+            .split("")
+            .map((char) => `${char}${char}`)
+            .join("")
+        : raw;
+    return {
+      r: Number.parseInt(normalized.slice(0, 2), 16),
+      g: Number.parseInt(normalized.slice(2, 4), 16),
+      b: Number.parseInt(normalized.slice(4, 6), 16),
+    };
+  }
+
+  const rgb = color.trim().match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!rgb) return null;
+  return {
+    r: Number(rgb[1]),
+    g: Number(rgb[2]),
+    b: Number(rgb[3]),
+  };
+}
+
+function getRelativeLuminance({ r, g, b }: RgbColor): number {
+  const toLinear = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
+function getStateBorderStyle(fill: string) {
+  const rgb = parseMapColor(fill);
+  if (!rgb) return DEFAULT_STATE_BORDER;
+  return getRelativeLuminance(rgb) >= PALE_FILL_LUMINANCE_THRESHOLD ? PALE_STATE_BORDER : DEFAULT_STATE_BORDER;
+}
+
 export function USChoropleth({
   features,
   valuesByStateId,
@@ -211,15 +271,16 @@ export function USChoropleth({
               const isPinned = stateId === pinnedStateId;
               const isHovered = stateId === hoveredStateId;
               const isHighlighted = isHovered || isPinned;
+              const borderStyle = getStateBorderStyle(fill);
 
               return (
                 <path
                   key={stateId}
                   d={d}
                   fill={fill}
-                  stroke={isHighlighted ? "#ffffff" : "#f3fbf7"}
-                  strokeOpacity={isHighlighted ? 1 : 0.82}
-                  strokeWidth={isPinned ? 2.6 : isHovered ? 1.9 : 0.75}
+                  stroke={isHighlighted ? "#ffffff" : borderStyle.stroke}
+                  strokeOpacity={isHighlighted ? 1 : borderStyle.strokeOpacity}
+                  strokeWidth={isPinned ? 2.6 : isHovered ? 1.9 : borderStyle.strokeWidth}
                   vectorEffect="non-scaling-stroke"
                   strokeLinejoin="round"
                   strokeLinecap="round"
