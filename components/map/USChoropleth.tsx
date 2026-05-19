@@ -136,6 +136,8 @@ export function USChoropleth({
 
   const preserveAspectRatio = viewport.width < 640 ? "xMidYMin meet" : "xMidYMid meet";
   const isMobileViewport = viewport.width < 640;
+  const extrusionOffset = isMobileViewport ? 1.8 : 3;
+  const extrusionOpacity = isMobileViewport ? 0.16 : 0.22;
   const sideOceanLabelSize = isMobileViewport ? 10 : 18;
   const gulfLabelSize = isMobileViewport ? 9 : 14;
   const getProjectedPoint = (longitude: number, latitude: number, fallbackX: number, fallbackY: number) => {
@@ -177,48 +179,69 @@ export function USChoropleth({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
+        <defs>
+          <filter id="ss-map-extrusion-shadow" x="-8%" y="-8%" width="116%" height="116%" colorInterpolationFilters="sRGB">
+            <feDropShadow dx="0" dy="1.5" stdDeviation="1.6" floodColor="#0f172a" floodOpacity="0.12" />
+          </filter>
+        </defs>
         <rect width="100%" height="100%" fill="transparent" />
         <g
           transform={`translate(${mapTransform.x} ${mapTransform.y}) scale(${mapTransform.scale})`}
           className="[will-change:transform]"
         >
-          {features.map((feat) => {
-            const stateId = (feat.id as string) ?? feat.properties?.stateId ?? "";
-            const value = valuesByStateId[stateId] ?? null;
-            const fill = colorScale(value);
-            const d = path(feat) ?? undefined;
-            const isPinned = stateId === pinnedStateId;
-            const isHovered = stateId === hoveredStateId;
-            const isHighlighted = isHovered || isPinned;
+          <g
+            className="map-extrusion-layer"
+            transform={`translate(0 ${extrusionOffset})`}
+            opacity={extrusionOpacity}
+            filter="url(#ss-map-extrusion-shadow)"
+            pointerEvents="none"
+            aria-hidden="true"
+          >
+            {features.map((feat) => {
+              const stateId = (feat.id as string) ?? feat.properties?.stateId ?? "";
+              return <path key={`extrusion-${stateId}`} d={path(feat) ?? undefined} fill="#064e3b" stroke="none" />;
+            })}
+          </g>
+          <g className="map-main-layer">
+            {features.map((feat) => {
+              const stateId = (feat.id as string) ?? feat.properties?.stateId ?? "";
+              const value = valuesByStateId[stateId] ?? null;
+              const fill = colorScale(value);
+              const d = path(feat) ?? undefined;
+              const isPinned = stateId === pinnedStateId;
+              const isHovered = stateId === hoveredStateId;
+              const isHighlighted = isHovered || isPinned;
 
-            return (
-              <path
-                key={stateId}
-                d={d}
-                fill={fill}
-                stroke={isHighlighted ? "#ffffff" : "#e1e7ea"}
-                strokeWidth={isPinned ? 2.6 : isHovered ? 1.9 : 0.7}
-                vectorEffect="non-scaling-stroke"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                onMouseEnter={handleMouseEnter(stateId)}
-                onMouseMove={handleMouseEnter(stateId)}
-                onMouseLeave={handleMouseEnter(null)}
-                onClick={() => {
-                  if (consumeClickSuppressed?.()) {
-                    return;
-                  }
-                  onClick(stateId);
-                }}
-                className={`outline-none focus:outline-none focus-visible:outline-none transition-[fill] duration-200 ease-out ${
-                  mapTransform.scale > 1.01 ? (isPanning ? "cursor-grabbing" : "cursor-grab") : "cursor-pointer"
-                }`}
-                tabIndex={0}
-                role="button"
-                aria-label={`${feat.properties?.name ?? stateId}: ${value ?? "No data"}`}
-              />
-            );
-          })}
+              return (
+                <path
+                  key={stateId}
+                  d={d}
+                  fill={fill}
+                  stroke={isHighlighted ? "#ffffff" : "#f3fbf7"}
+                  strokeOpacity={isHighlighted ? 1 : 0.82}
+                  strokeWidth={isPinned ? 2.6 : isHovered ? 1.9 : 0.75}
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  onMouseEnter={handleMouseEnter(stateId)}
+                  onMouseMove={handleMouseEnter(stateId)}
+                  onMouseLeave={handleMouseEnter(null)}
+                  onClick={() => {
+                    if (consumeClickSuppressed?.()) {
+                      return;
+                    }
+                    onClick(stateId);
+                  }}
+                  className={`outline-none focus:outline-none focus-visible:outline-none transition-[fill] duration-200 ease-out ${
+                    mapTransform.scale > 1.01 ? (isPanning ? "cursor-grabbing" : "cursor-grab") : "cursor-pointer"
+                  }`}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${feat.properties?.name ?? stateId}: ${value ?? "No data"}`}
+                />
+              );
+            })}
+          </g>
           <path
             d={path({ type: "Sphere" } as GeoPermissibleObjects) ?? undefined}
             fill="none"
