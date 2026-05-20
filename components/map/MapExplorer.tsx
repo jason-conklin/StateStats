@@ -456,7 +456,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
           </div>
         </div>
         <div
-          className={`relative flex min-h-[100svh] w-full flex-col overflow-x-hidden ss-water ss-water--animate transition-[padding] duration-200 md:h-[calc(100vh-0px)] md:min-h-0 md:overflow-hidden ${
+          className={`relative flex min-h-[100svh] w-full flex-col overflow-x-hidden ss-water transition-[padding] duration-200 md:h-[calc(100vh-0px)] md:min-h-0 md:overflow-hidden ${
             isTableOpen ? "md:pr-[392px]" : "md:pr-0"
           }`}
         >

@@ -103,7 +103,6 @@ body {
     linear-gradient(180deg, #dff6fb 0%, #b8eaf4 24%, #8ddced 62%, #78d4e9 100%);
 }
 
-.ss-water::before,
 .ss-water::after {
   content: "";
   position: absolute;
@@ -114,20 +113,6 @@ body {
 .ss-water > * {
   position: relative;
   z-index: 2;
-}
-
-.ss-water::before {
-  z-index: 0;
-  inset: -2%;
-  opacity: 0.16;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='460' height='300' viewBox='0 0 460 300'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M-34 54 C 40 36 88 72 154 56 S 252 36 350 62' stroke='%23ffffff' stroke-opacity='.42' stroke-width='.75'/%3E%3Cpath d='M82 128 C 138 102 196 138 258 118 S 362 102 500 134' stroke='%235facc7' stroke-opacity='.18' stroke-width='.7'/%3E%3Cpath d='M-42 220 C 38 200 96 232 160 214 S 266 198 346 226' stroke='%23ffffff' stroke-opacity='.28' stroke-width='.7'/%3E%3Cpath d='M300 -44 C 340 28 304 78 344 140 S 390 218 332 338' stroke='%23ffffff' stroke-opacity='.16' stroke-width='.65'/%3E%3Cpath d='M38 -34 C 76 32 44 90 86 150 S 126 226 70 336' stroke='%235facc7' stroke-opacity='.12' stroke-width='.65'/%3E%3C/g%3E%3C/svg%3E");
-  background-size:
-    460px 300px;
-  background-position: 36px -18px;
-  -webkit-mask-image: radial-gradient(ellipse 58% 48% at 52% 45%, transparent 0%, transparent 46%, rgba(0, 0, 0, 0.24) 62%, rgba(0, 0, 0, 0.78) 100%);
-  mask-image: radial-gradient(ellipse 58% 48% at 52% 45%, transparent 0%, transparent 46%, rgba(0, 0, 0, 0.24) 62%, rgba(0, 0, 0, 0.78) 100%);
-  mix-blend-mode: normal;
 }
 
 .ss-water::after {
@@ -141,32 +126,7 @@ body {
   mix-blend-mode: soft-light;
 }
 
-.ss-water--animate::before {
-  animation: ss-water-contours 96s ease-in-out infinite alternate;
-}
-
-@keyframes ss-water-contours {
-  from {
-    transform: translate3d(0, 0, 0) scale(1.01);
-  }
-
-  to {
-    transform: translate3d(-10px, 7px, 0) scale(1.02);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ss-water--animate::before {
-    animation: none;
-  }
-}
-
 @media (max-width: 639px) {
-  .ss-water::before {
-    opacity: 0.1;
-    background-size: 360px 235px;
-  }
-
   .ss-water::after {
     opacity: 0.16;
   }

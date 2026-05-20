@@ -186,7 +186,7 @@ export function Sidebar({ navLinks, statusText, collapsed, onSetCollapsed }: Pro
                       }`}
                     />
                   </span>
-                  <span className="min-w-0 truncate text-base">{link.label}</span>
+                  <span className="min-w-0 truncate text-base underline-offset-4 group-hover:underline">{link.label}</span>
                 </Link>
                 </li>
               );

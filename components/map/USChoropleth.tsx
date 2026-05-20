@@ -4,7 +4,6 @@ import { geoAlbersUsa, geoPath, GeoPermissibleObjects } from "d3-geo";
 import { Feature, FeatureCollection, Geometry } from "geojson";
 import type { MouseEvent, PointerEventHandler, WheelEventHandler } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NEUTRAL_COLOR } from "@/lib/mapScales";
 import type { MapTransform } from "./useMapZoom";
 
 type Props = {
@@ -331,13 +330,6 @@ export function USChoropleth({
               );
             })}
           </g>
-          <path
-            d={path({ type: "Sphere" } as GeoPermissibleObjects) ?? undefined}
-            fill="none"
-            stroke={NEUTRAL_COLOR}
-            strokeWidth={0.5}
-            vectorEffect="non-scaling-stroke"
-          />
           <g pointerEvents="none" aria-hidden="true">
             <text
               x={pacificLabelX}
