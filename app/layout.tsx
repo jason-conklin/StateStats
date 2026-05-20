@@ -22,9 +22,35 @@ const navLinks = [
   { href: "/about", label: "About" },
 ];
 
+const siteUrl = "https://www.statestats.us";
+const siteDescription = "Interactive maps and charts for exploring U.S. state-level data.";
+const previewImageUrl = `${siteUrl}/statestats-banner.png`;
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "StateStats",
-  description: "Explore U.S. state-level metrics with maps, charts, and data downloads.",
+  description: siteDescription,
+  openGraph: {
+    title: "StateStats",
+    description: siteDescription,
+    url: siteUrl,
+    siteName: "StateStats",
+    type: "website",
+    images: [
+      {
+        url: previewImageUrl,
+        width: 1200,
+        height: 630,
+        alt: "StateStats preview",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "StateStats",
+    description: siteDescription,
+    images: [previewImageUrl],
+  },
 };
 
 // Disable static prerendering so database lookups occur only at runtime.

@@ -25,7 +25,7 @@ type MetricData = {
 };
 
 export const metadata: Metadata = {
-  title: "StateStats - Map",
+  title: "StateStats",
 };
 
 export const runtime = "nodejs";
