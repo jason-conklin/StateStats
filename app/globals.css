@@ -97,10 +97,10 @@ body {
   position: relative;
   isolation: isolate;
   background-image:
-    radial-gradient(145% 100% at 10% -18%, rgba(255, 255, 255, 0.54) 0%, rgba(255, 255, 255, 0) 52%),
-    radial-gradient(150% 124% at 90% -10%, rgba(170, 210, 239, 0.34) 0%, rgba(170, 210, 239, 0) 62%),
-    radial-gradient(145% 125% at 50% 116%, rgba(121, 180, 221, 0.22) 0%, rgba(121, 180, 221, 0) 68%),
-    linear-gradient(180deg, #cdeafb 0%, #b9ddf5 36%, #a6cde9 68%, #98c0e2 100%);
+    radial-gradient(120% 82% at 14% -12%, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(92% 72% at 84% 8%, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 62%),
+    radial-gradient(120% 96% at 48% 112%, rgba(99, 169, 213, 0.2) 0%, rgba(99, 169, 213, 0) 66%),
+    linear-gradient(180deg, #dff3ff 0%, #c9e8f8 55%, #b9dcf1 100%);
 }
 
 .ss-water::before,
@@ -113,78 +113,65 @@ body {
 
 .ss-water::before {
   z-index: 0;
-  opacity: 0.28;
+  inset: -6%;
+  opacity: 0.2;
   background-image:
-    radial-gradient(74% 48% at 18% 24%, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 76%),
-    radial-gradient(72% 52% at 84% 14%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0) 78%),
-    radial-gradient(78% 58% at 52% 82%, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 76%),
-    linear-gradient(124deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 52%);
+    repeating-radial-gradient(ellipse at 18% 26%, rgba(255, 255, 255, 0.52) 0 1px, transparent 1px 18px),
+    repeating-radial-gradient(ellipse at 78% 36%, rgba(14, 116, 144, 0.18) 0 1px, transparent 1px 24px),
+    repeating-radial-gradient(ellipse at 42% 78%, rgba(255, 255, 255, 0.34) 0 1px, transparent 1px 22px);
   background-size:
-    180% 180%,
-    188% 188%,
-    170% 170%,
-    100% 100%;
+    720px 420px,
+    820px 460px,
+    680px 390px;
   background-position:
-    -12% -8%,
-    112% 0%,
-    50% 112%,
-    0 0;
-  filter: contrast(1.1) saturate(1.05);
+    -80px -40px,
+    calc(100% + 120px) 24px,
+    50% calc(100% + 80px);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
   mix-blend-mode: soft-light;
 }
 
 .ss-water::after {
   z-index: 1;
-  opacity: 0.09;
+  opacity: 0.34;
   background-image:
-    radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.2) 0.75px, transparent 0.85px),
-    radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.12) 0.55px, transparent 0.7px);
-  background-size:
-    3px 3px,
-    5px 5px;
-  mix-blend-mode: overlay;
+    radial-gradient(68% 44% at 22% 18%, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(54% 38% at 84% 22%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 76%),
+    radial-gradient(72% 48% at 50% 88%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 78%);
+  mix-blend-mode: soft-light;
 }
 
 .ss-water--animate::before {
-  animation: ss-water-caustics 84s linear infinite;
+  animation: ss-water-contours 96s ease-in-out infinite alternate;
 }
 
-.ss-water--animate::after {
-  animation: ss-water-grain 112s linear infinite;
-}
-
-@keyframes ss-water-caustics {
+@keyframes ss-water-contours {
   from {
-    background-position:
-      -12% -8%,
-      112% 0%,
-      50% 112%,
-      0 0;
+    transform: translate3d(0, 0, 0) scale(1.02);
   }
 
   to {
-    background-position:
-      -4% -2%,
-      104% 6%,
-      56% 104%,
-      0 0;
-  }
-}
-
-@keyframes ss-water-grain {
-  from {
-    background-position: 0 0;
-  }
-
-  to {
-    background-position: 132px 94px;
+    transform: translate3d(-18px, 12px, 0) scale(1.04);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ss-water--animate::before,
-  .ss-water--animate::after {
+  .ss-water--animate::before {
     animation: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .ss-water::before {
+    opacity: 0.14;
+    background-size:
+      520px 330px,
+      580px 360px,
+      500px 320px;
+  }
+
+  .ss-water::after {
+    opacity: 0.26;
   }
 }
 
