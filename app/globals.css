@@ -97,10 +97,10 @@ body {
   position: relative;
   isolation: isolate;
   background-image:
-    radial-gradient(120% 82% at 14% -12%, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0) 58%),
-    radial-gradient(92% 72% at 84% 8%, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 62%),
-    radial-gradient(120% 96% at 48% 112%, rgba(99, 169, 213, 0.2) 0%, rgba(99, 169, 213, 0) 66%),
-    linear-gradient(180deg, #dff3ff 0%, #c9e8f8 55%, #b9dcf1 100%);
+    radial-gradient(110% 74% at 16% -12%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(94% 70% at 86% 10%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 64%),
+    radial-gradient(120% 96% at 48% 112%, rgba(37, 150, 190, 0.16) 0%, rgba(37, 150, 190, 0) 66%),
+    linear-gradient(180deg, #a9e8f4 0%, #78d4e9 48%, #5fbfd9 100%);
 }
 
 .ss-water::before,
@@ -119,29 +119,21 @@ body {
 .ss-water::before {
   z-index: 0;
   inset: -4%;
-  opacity: 0.42;
+  opacity: 0.2;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='340' viewBox='0 0 560 340'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M-54 58 C 50 16 116 96 216 68 S 378 34 614 78' stroke='%23ffffff' stroke-opacity='.42' stroke-width='1.15'/%3E%3Cpath d='M-46 102 C 58 68 136 148 240 112 S 390 78 608 126' stroke='%234c89af' stroke-opacity='.22' stroke-width='1'/%3E%3Cpath d='M-58 150 C 58 112 140 194 254 160 S 410 122 622 174' stroke='%23ffffff' stroke-opacity='.34' stroke-width='1'/%3E%3Cpath d='M-42 202 C 72 168 154 244 268 210 S 426 174 604 226' stroke='%234c89af' stroke-opacity='.18' stroke-width='1'/%3E%3Cpath d='M-62 258 C 42 220 130 300 248 266 S 420 230 618 284' stroke='%23ffffff' stroke-opacity='.28' stroke-width='1'/%3E%3Cpath d='M90 -36 C 142 44 92 110 158 178 S 194 274 144 382' stroke='%23ffffff' stroke-opacity='.18' stroke-width='1'/%3E%3Cpath d='M392 -42 C 454 36 392 116 472 184 S 506 278 446 384' stroke='%234c89af' stroke-opacity='.14' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E"),
-    repeating-radial-gradient(ellipse at 18% 26%, rgba(255, 255, 255, 0.42) 0 1px, transparent 1px 34px),
-    repeating-radial-gradient(ellipse at 78% 36%, rgba(76, 137, 175, 0.14) 0 1px, transparent 1px 38px);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='430' viewBox='0 0 760 430'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M-80 84 C 76 24 172 122 326 86 S 558 44 842 104' stroke='%23ffffff' stroke-opacity='.5' stroke-width='1.15'/%3E%3Cpath d='M-72 166 C 92 106 206 210 358 168 S 584 118 830 192' stroke='%234c89af' stroke-opacity='.2' stroke-width='1'/%3E%3Cpath d='M-92 260 C 82 196 208 306 386 262 S 604 206 842 292' stroke='%23ffffff' stroke-opacity='.32' stroke-width='1'/%3E%3Cpath d='M122 -56 C 190 54 118 150 208 252 S 258 354 192 488' stroke='%23ffffff' stroke-opacity='.16' stroke-width='1'/%3E%3Cpath d='M560 -66 C 636 42 548 150 654 256 S 704 356 626 494' stroke='%234c89af' stroke-opacity='.12' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E");
   background-size:
-    560px 340px,
-    760px 430px,
-    840px 470px;
-  background-position:
-    -40px -18px,
-    -80px -40px,
-    calc(100% + 120px) 24px;
+    760px 430px;
+  background-position: -80px -30px;
   mix-blend-mode: normal;
 }
 
 .ss-water::after {
   z-index: 1;
-  opacity: 0.24;
+  opacity: 0.16;
   background-image:
-    radial-gradient(68% 44% at 22% 18%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 74%),
-    radial-gradient(54% 38% at 84% 22%, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 76%),
-    radial-gradient(72% 48% at 50% 88%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 78%);
+    radial-gradient(68% 44% at 22% 18%, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0) 74%),
+    radial-gradient(54% 38% at 84% 22%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 76%);
   mix-blend-mode: soft-light;
 }
 
@@ -167,15 +159,12 @@ body {
 
 @media (max-width: 639px) {
   .ss-water::before {
-    opacity: 0.28;
-    background-size:
-      420px 260px,
-      560px 340px,
-      620px 360px;
+    opacity: 0.14;
+    background-size: 560px 320px;
   }
 
   .ss-water::after {
-    opacity: 0.2;
+    opacity: 0.12;
   }
 }
 
