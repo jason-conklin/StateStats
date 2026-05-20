@@ -203,7 +203,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
       return { left, top };
     }
 
-    const tooltipWidth = 176;
+    const tooltipWidth = 112;
     const rightEdge = left + tooltipWidth;
     if (rightEdge > mapContainerWidth - edgePadding) {
       left = Math.max(edgePadding, tooltipContent.position.x - tooltipWidth - defaultOffset);
