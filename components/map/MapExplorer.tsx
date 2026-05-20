@@ -683,18 +683,18 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
 
             {tooltipContent && tooltipStyle ? (
               <div
-                className="pointer-events-none absolute z-20 w-40 rounded-xl border border-slate-200 bg-white/95 p-2.5 shadow-[0_8px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm transition-all duration-150 ease-out sm:w-56 sm:p-3"
+                className="pointer-events-none absolute z-20 w-28 rounded-lg border border-slate-200 bg-white/95 p-1.5 shadow-[0_6px_16px_rgba(0,0,0,0.10)] backdrop-blur-sm transition-all duration-150 ease-out sm:w-56 sm:rounded-xl sm:p-3 sm:shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                 style={tooltipStyle}
               >
-                <p className="text-sm font-semibold text-slate-900 sm:text-base">{tooltipContent.stateName}</p>
-                <p className="mt-1 text-base font-bold text-emerald-700 sm:text-lg">
+                <p className="truncate text-[11px] font-semibold leading-tight text-slate-900 sm:text-base">{tooltipContent.stateName}</p>
+                <p className="mt-0.5 text-xs font-bold leading-tight text-emerald-700 sm:mt-1 sm:text-lg">
                   {formatMetricValue(tooltipContent.value, selectedMetric?.unit ?? undefined)}
                 </p>
-                <div className="my-1.5 h-px bg-slate-200 sm:my-2" />
+                <div className="my-1 h-px bg-slate-200 sm:my-2" />
                 {tooltipContent.rank ? (
-                  <p className="text-xs text-slate-500">Rank {tooltipContent.rank} / {states.length}</p>
+                  <p className="text-[9px] leading-tight text-slate-500 sm:text-xs">Rank {tooltipContent.rank} / {states.length}</p>
                 ) : (
-                  <p className="text-xs text-slate-500">No data</p>
+                  <p className="text-[9px] leading-tight text-slate-500 sm:text-xs">No data</p>
                 )}
               </div>
             ) : null}
