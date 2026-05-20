@@ -128,6 +128,11 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
   const sliderValue =
     selectedMetric && selectedMetric.years.length ? Math.min(Math.max(selectedYear, yearMin), yearMax) : yearMax;
   const yearRange = Math.max(1, yearMax - yearMin);
+  const yearCoverageLabel = selectedMetric?.years.length
+    ? yearMin === yearMax
+      ? String(yearMax)
+      : `${yearMin}-${yearMax}`
+    : "—";
   const fillPct = selectedMetric?.years.length
     ? Math.min(100, Math.max(0, ((sliderValue - yearMin) / yearRange) * 100))
     : 0;
@@ -369,10 +374,10 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                     <div className="w-full">
                           <div className="relative">
                             <div className="pointer-events-none absolute inset-0 flex items-center" aria-hidden>
-                              <div className="relative h-1.5" style={trackRegionStyle}>
-                                <span className="absolute inset-0 rounded-full bg-slate-300/70" />
+                              <div className="relative h-[5px]" style={trackRegionStyle}>
+                                <span className="absolute inset-0 rounded-full bg-slate-400/25 shadow-[inset_0_1px_1px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.75)]" />
                                 <span
-                                  className="absolute inset-y-0 left-0 rounded-full bg-emerald-500/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+                                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-300/85 via-emerald-400/80 to-emerald-600/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_0_10px_rgba(16,185,129,0.18)]"
                                   style={{ width: `${fillPct}%` }}
                                 />
                               </div>
@@ -406,12 +411,12 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                                   >
                                     <span
                                       className={`block w-px -translate-x-1/2 ${
-                                        isSelectedTick ? "h-2.5 bg-slate-700" : "h-2 bg-slate-400/60"
+                                        isSelectedTick ? "h-3 bg-emerald-800/75" : "h-2 bg-slate-500/35"
                                       }`}
                                     />
                                     <span
                                       className={`mt-0.5 block text-[10px] tabular-nums select-none ${
-                                        isSelectedTick ? "font-semibold text-slate-900" : "text-slate-500"
+                                        isSelectedTick ? "font-semibold text-slate-950" : "text-slate-500/85"
                                       } ${
                                         isFirst
                                           ? "translate-x-0 text-left"
@@ -450,7 +455,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                 </button>
               </div>
               <p className="mt-0 truncate text-right text-[10px] leading-none text-slate-600">
-                Data through {selectedMetric?.maxYear ?? "—"} for {selectedMetric?.name ?? "this metric"}
+                Data through {yearCoverageLabel} for {selectedMetric?.name ?? "this metric"}
               </p>
             </div>
           </div>
@@ -477,10 +482,10 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                       <div className="relative min-w-0 px-0.5 pr-[2.85rem]">
                           <div className="relative">
                             <div className="pointer-events-none absolute inset-0 flex items-center" aria-hidden>
-                              <div className="relative h-1.5" style={trackRegionStyle}>
-                                <span className="absolute inset-0 rounded-full bg-slate-300/70" />
+                              <div className="relative h-[5px]" style={trackRegionStyle}>
+                                <span className="absolute inset-0 rounded-full bg-slate-400/25 shadow-[inset_0_1px_1px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.75)]" />
                                 <span
-                                  className="absolute inset-y-0 left-0 rounded-full bg-emerald-500/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+                                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-300/85 via-emerald-400/80 to-emerald-600/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_0_10px_rgba(16,185,129,0.18)]"
                                   style={{ width: `${fillPct}%` }}
                                 />
                               </div>
@@ -514,12 +519,12 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                                   >
                                     <span
                                       className={`block w-px -translate-x-1/2 ${
-                                        isSelectedTick ? "h-2.5 bg-slate-700" : "h-1.5 bg-slate-400/55"
+                                        isSelectedTick ? "h-2.5 bg-emerald-800/70" : "h-1.5 bg-slate-500/35"
                                       }`}
                                     />
                                     <span
                                       className={`mt-0.5 block text-[8px] leading-none tabular-nums select-none ${
-                                        isSelectedTick ? "font-semibold text-slate-900" : "text-slate-500"
+                                        isSelectedTick ? "font-semibold text-slate-950" : "text-slate-500/85"
                                       } ${
                                         isFirst
                                           ? "translate-x-0 text-left"
@@ -549,10 +554,10 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                           <div className="w-full">
                             <div className="relative">
                               <div className="pointer-events-none absolute inset-0 flex items-center" aria-hidden>
-                                <div className="relative h-1.5" style={trackRegionStyle}>
-                                  <span className="absolute inset-0 rounded-full bg-slate-300/70" />
+                                <div className="relative h-[5px]" style={trackRegionStyle}>
+                                  <span className="absolute inset-0 rounded-full bg-slate-400/25 shadow-[inset_0_1px_1px_rgba(15,23,42,0.08),0_1px_0_rgba(255,255,255,0.75)]" />
                                   <span
-                                    className="absolute inset-y-0 left-0 rounded-full bg-emerald-500/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+                                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-300/85 via-emerald-400/80 to-emerald-600/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_0_10px_rgba(16,185,129,0.18)]"
                                     style={{ width: `${fillPct}%` }}
                                   />
                                 </div>
@@ -585,13 +590,13 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                                       style={{ left: `${left}%` }}
                                     >
                                       <span
-                                        className={`block w-px -translate-x-1/2 ${
-                                          isSelectedTick ? "h-2.5 bg-slate-700" : "h-2 bg-slate-400/60"
+                                      className={`block w-px -translate-x-1/2 ${
+                                          isSelectedTick ? "h-3 bg-emerald-800/75" : "h-2 bg-slate-500/35"
                                         }`}
                                       />
                                       <span
                                         className={`mt-0.5 block text-[10px] tabular-nums select-none ${
-                                          isSelectedTick ? "font-semibold text-slate-900" : "text-slate-500"
+                                          isSelectedTick ? "font-semibold text-slate-950" : "text-slate-500/85"
                                         } ${
                                           isFirst
                                             ? "translate-x-0 text-left"
@@ -631,7 +636,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                   </button>
                 </div>
                 <p className="mt-0 truncate text-left text-[10px] leading-none text-slate-600 sm:text-right">
-                  Data through {selectedMetric?.maxYear ?? "—"} for {selectedMetric?.name ?? "this metric"}
+                  Data through {yearCoverageLabel} for {selectedMetric?.name ?? "this metric"}
                 </p>
               </div>
             </div>

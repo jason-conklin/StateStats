@@ -33,7 +33,7 @@ body {
 }
 
 .ss-year-slider {
-  --ss-track: 6px;
+  --ss-track: 5px;
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
@@ -68,8 +68,37 @@ body {
   margin-top: calc((var(--ss-track) - var(--ss-thumb)) / 2);
   border-radius: 9999px;
   background: #ffffff;
-  border: 2px solid #145c36;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 2px solid #166534;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.14),
+    0 4px 10px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition:
+    box-shadow 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.ss-year-slider:hover::-webkit-slider-thumb {
+  border-color: #047857;
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.16),
+    0 6px 14px rgba(15, 23, 42, 0.22),
+    0 0 0 4px rgba(16, 185, 129, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.ss-year-slider:active::-webkit-slider-thumb {
+  transform: scale(0.96);
+}
+
+.ss-year-slider:focus-visible::-webkit-slider-thumb {
+  border-color: #047857;
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.16),
+    0 6px 14px rgba(15, 23, 42, 0.2),
+    0 0 0 4px rgba(16, 185, 129, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .ss-year-slider::-moz-range-track {
@@ -89,8 +118,37 @@ body {
   height: var(--ss-thumb);
   border-radius: 9999px;
   background: #ffffff;
-  border: 2px solid #145c36;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 2px solid #166534;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.14),
+    0 4px 10px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition:
+    box-shadow 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.ss-year-slider:hover::-moz-range-thumb {
+  border-color: #047857;
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.16),
+    0 6px 14px rgba(15, 23, 42, 0.22),
+    0 0 0 4px rgba(16, 185, 129, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.ss-year-slider:active::-moz-range-thumb {
+  transform: scale(0.96);
+}
+
+.ss-year-slider:focus-visible::-moz-range-thumb {
+  border-color: #047857;
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.16),
+    0 6px 14px rgba(15, 23, 42, 0.2),
+    0 0 0 4px rgba(16, 185, 129, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .ss-water {
