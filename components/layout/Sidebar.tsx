@@ -123,7 +123,15 @@ export function Sidebar({ navLinks, statusText, collapsed, onSetCollapsed }: Pro
               </span>
             </button>
             <div className="min-w-0 flex items-center">
-              <span className="text-lg font-semibold tracking-tight text-white">StateStats</span>
+              <Link
+                href="/"
+                onClick={() => {
+                  if (pathname !== "/") startRouteTransition();
+                }}
+                className="cursor-pointer truncate text-lg font-semibold tracking-tight text-white underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-950"
+              >
+                StateStats
+              </Link>
             </div>
           </div>
         )}
