@@ -8,7 +8,11 @@ import {
   Briefcase,
   Check,
   ChevronDown,
+  CloudRain,
   Home,
+  Snowflake,
+  Thermometer,
+  Tornado,
   UserRound,
   Users,
 } from "lucide-react";
@@ -37,6 +41,30 @@ type DropdownPosition = {
   width: number;
 };
 
+const DROPDOWN_VIEWPORT_PADDING = 8;
+const DROPDOWN_VERTICAL_GAP = 8;
+const DROPDOWN_OPTION_HEIGHT = 52;
+const DROPDOWN_VERTICAL_PADDING = 12;
+
+function EarthquakeIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+      focusable="false"
+    >
+      <path d="M3 12h3l2-5 3 12 3-14 2 7h5" />
+      <path d="M3 18h18" opacity="0.35" />
+    </svg>
+  );
+}
+
 export function getMetricIcon(metricId: string, className = "h-4 w-4"): ReactNode {
   switch (metricId) {
     case "median_household_income":
@@ -49,6 +77,16 @@ export function getMetricIcon(metricId: string, className = "h-4 w-4"): ReactNod
       return <Briefcase className={className} aria-hidden />;
     case "median_age":
       return <UserRound className={className} aria-hidden />;
+    case "annual_precipitation":
+      return <CloudRain className={className} aria-hidden />;
+    case "annual_snowfall":
+      return <Snowflake className={className} aria-hidden />;
+    case "average_annual_temperature":
+      return <Thermometer className={className} aria-hidden />;
+    case "earthquake_count":
+      return <EarthquakeIcon className={className} />;
+    case "tornado_count":
+      return <Tornado className={className} aria-hidden />;
     default:
       return <BarChart3 className={className} aria-hidden />;
   }
@@ -119,19 +157,28 @@ export function MetricSelect({
     const rect = trigger.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return null;
     const viewportWidth = typeof window === "undefined" ? rect.width : window.innerWidth;
-    const horizontalPadding = 8;
+    const viewportHeight = typeof window === "undefined" ? rect.bottom : window.innerHeight;
+    const estimatedDropdownHeight = metrics.length * DROPDOWN_OPTION_HEIGHT + DROPDOWN_VERTICAL_PADDING;
     const minStealthWidth = 320;
     const desiredWidth = isStealth ? Math.max(rect.width, minStealthWidth) : rect.width;
-    const maxWidth = Math.max(220, viewportWidth - horizontalPadding * 2);
+    const maxWidth = Math.max(220, viewportWidth - DROPDOWN_VIEWPORT_PADDING * 2);
     const width = Math.min(desiredWidth, maxWidth);
-    const maxLeft = viewportWidth - horizontalPadding - width;
-    const left = Math.min(Math.max(horizontalPadding, rect.left), maxLeft);
+    const maxLeft = viewportWidth - DROPDOWN_VIEWPORT_PADDING - width;
+    const left = Math.min(Math.max(DROPDOWN_VIEWPORT_PADDING, rect.left), maxLeft);
+    const preferredTop = rect.bottom + DROPDOWN_VERTICAL_GAP;
+    const maxTop = viewportHeight - DROPDOWN_VIEWPORT_PADDING - estimatedDropdownHeight;
+    const bottomRoom = viewportHeight - DROPDOWN_VIEWPORT_PADDING - preferredTop;
+    const topRoom = rect.top - DROPDOWN_VERTICAL_GAP - DROPDOWN_VIEWPORT_PADDING;
+    const shouldOpenAbove = estimatedDropdownHeight > bottomRoom && topRoom > bottomRoom;
+    const top = shouldOpenAbove
+      ? Math.max(DROPDOWN_VIEWPORT_PADDING, rect.top - DROPDOWN_VERTICAL_GAP - estimatedDropdownHeight)
+      : Math.max(DROPDOWN_VIEWPORT_PADDING, Math.min(preferredTop, maxTop));
     return {
       left,
-      top: rect.bottom + 8,
+      top,
       width,
     };
-  }, [isStealth]);
+  }, [isStealth, metrics.length]);
 
   const openMenu = (targetIndex: number) => {
     if (!metrics.length) return;
@@ -219,11 +266,6 @@ export function MetricSelect({
     return () => cancelAnimationFrame(frame);
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex, isOpen]);
-
   const dropdownContent = (
     <div
       id={listboxId}
@@ -269,7 +311,7 @@ export function MetricSelect({
           closeMenu();
         }
       }}
-      className="max-h-[320px] overflow-auto rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur-sm focus:outline-none"
+      className="overflow-visible rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur-sm focus:outline-none"
     >
       {metrics.map((metric, index) => {
         const isSelected = metric.id === value;
