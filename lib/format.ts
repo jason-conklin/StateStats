@@ -65,6 +65,18 @@ export function formatMetricValue(
       return `${formatNumber(value, 1)}%`;
     }
 
+    if (normalizedUnit === "°f" || normalizedUnit === "f" || normalizedUnit === "fahrenheit") {
+      return `${formatNumber(value, 1)}°F`;
+    }
+
+    if (normalizedUnit === "in" || normalizedUnit === "inch" || normalizedUnit === "inches") {
+      return `${formatNumber(value, 1)} in`;
+    }
+
+    if (normalizedUnit === "events" || normalizedUnit === "event") {
+      return `${formatNumber(value, 0)} events`;
+    }
+
     if (normalizedUnit === "people") {
       return formatCompactMagnitude(value, 1);
     }
@@ -86,6 +98,18 @@ export function formatMetricValue(
 
   if (unit === "%" || normalizedUnit === "percent") {
     return `${value.toFixed(1)}%`;
+  }
+
+  if (normalizedUnit === "°f" || normalizedUnit === "f" || normalizedUnit === "fahrenheit") {
+    return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)}°F`;
+  }
+
+  if (normalizedUnit === "in" || normalizedUnit === "inch" || normalizedUnit === "inches") {
+    return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value)} in`;
+  }
+
+  if (normalizedUnit === "events" || normalizedUnit === "event") {
+    return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value)} events`;
   }
 
   if (normalizedUnit === "people") {

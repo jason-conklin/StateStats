@@ -12,6 +12,10 @@ export const metadata: Metadata = {
 const SOURCE_LINK_OVERRIDES: Record<string, string> = {
   census_acs: "https://www.census.gov/programs-surveys/acs.html",
   bls_laus: "https://www.bls.gov/lau/",
+  noaa_climate_at_a_glance: "https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/",
+  noaa_cdo: "https://www.ncei.noaa.gov/cdo-web/",
+  noaa_storm_events: "https://www.ncei.noaa.gov/stormevents/",
+  usgs_earthquake_catalog: "https://earthquake.usgs.gov/earthquakes/search/",
 };
 
 const SYNTHETIC_SOURCE_COUNTERPARTS: Record<string, string> = {
@@ -24,6 +28,10 @@ const SOURCE_DISPLAY_PRIORITY: Record<string, number> = {
   census_acs_synthetic: 1,
   bls_laus: 2,
   bls_unemployment_rate_synthetic: 3,
+  noaa_climate_at_a_glance: 4,
+  noaa_cdo: 5,
+  noaa_storm_events: 6,
+  usgs_earthquake_catalog: 7,
 };
 
 function sortSourcesByPriority<T extends { id: string; name: string }>(sources: T[]) {

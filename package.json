@@ -18,6 +18,12 @@
     "ingest:age": "tsx scripts/cli/ingestAge.ts",
     "ingest:median-age": "tsx scripts/ingestion/ingestMedianAge.ts",
     "ingest:median-income": "npm run ingest:income",
+    "ingest:weather": "tsx scripts/cli/ingestWeather.ts",
+    "ingest:temperature": "tsx scripts/cli/ingestAverageAnnualTemperature.ts",
+    "ingest:precipitation": "tsx scripts/cli/ingestAnnualPrecipitation.ts",
+    "ingest:snowfall": "tsx scripts/cli/ingestAnnualSnowfall.ts",
+    "ingest:tornadoes": "tsx scripts/cli/ingestTornadoCount.ts",
+    "ingest:earthquakes": "tsx scripts/cli/ingestEarthquakeCount.ts",
     "ingest:all": "tsx scripts/ingestAllMetrics.ts",
     "ingest:verify": "tsx scripts/verifyIngestion.ts"
   },

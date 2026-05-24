@@ -4,6 +4,7 @@ import {
   ACS_ONE_YEAR_REAL_WINDOW_CONFIG,
   resolveAcsExpectedWindow,
 } from "./ingestion/acsWindow";
+import { weatherStateIdSet, WEATHER_EXPECTED_STATE_COUNT } from "./ingestion/weatherStates";
 
 type IngestionRunView = {
   dataSourceId: string;
@@ -25,8 +26,36 @@ const ACS_METRIC_IDS = new Set([
   "population_total",
 ]);
 
+const WEATHER_METRIC_IDS = new Set([
+  "average_annual_temperature",
+  "annual_precipitation",
+  "annual_snowfall",
+  "tornado_count",
+  "earthquake_count",
+]);
+
 const EXPECTED_NON_ACS_WINDOWS: Record<string, ExpectedRealWindow> = {
   unemployment_rate: {
+    startYear: 2000,
+    endYear: new Date().getFullYear() - 1,
+  },
+  average_annual_temperature: {
+    startYear: 2000,
+    endYear: new Date().getFullYear() - 1,
+  },
+  annual_precipitation: {
+    startYear: 2000,
+    endYear: new Date().getFullYear() - 1,
+  },
+  annual_snowfall: {
+    startYear: 2000,
+    endYear: new Date().getFullYear() - 1,
+  },
+  tornado_count: {
+    startYear: 2000,
+    endYear: new Date().getFullYear() - 1,
+  },
+  earthquake_count: {
     startYear: 2000,
     endYear: new Date().getFullYear() - 1,
   },
@@ -190,6 +219,40 @@ async function main() {
       });
       const observedYears = distinctYears.map((row) => row.year).sort((a, b) => a - b);
       const expectedWindow = EXPECTED_NON_ACS_WINDOWS[metric.id];
+
+      if (WEATHER_METRIC_IDS.has(metric.id)) {
+        const weatherRows = await client.observation.findMany({
+          where: { metricId: metric.id },
+          select: { year: true, stateId: true },
+        });
+        const dcRows = weatherRows.filter((row) => row.stateId === "11");
+        if (dcRows.length > 0) {
+          console.warn(
+            `WARNING: Weather metric ${metric.id} still has ${dcRows.length} District of Columbia observation(s); rerun weather ingestion cleanup.`,
+          );
+        }
+
+        const coverageByYear = new Map<number, Set<string>>();
+        for (const row of weatherRows) {
+          if (!weatherStateIdSet.has(row.stateId)) continue;
+          const bucket = coverageByYear.get(row.year) ?? new Set<string>();
+          bucket.add(row.stateId);
+          coverageByYear.set(row.year, bucket);
+        }
+
+        for (const [year, stateIds] of Array.from(coverageByYear.entries()).sort((a, b) => a[0] - b[0])) {
+          if (stateIds.size < WEATHER_EXPECTED_STATE_COUNT) {
+            console.warn(
+              `WARNING: Weather metric ${metric.id} year ${year} has ${stateIds.size}/${WEATHER_EXPECTED_STATE_COUNT} states (District of Columbia excluded).`,
+            );
+          }
+          if (stateIds.size > WEATHER_EXPECTED_STATE_COUNT) {
+            console.warn(
+              `WARNING: Weather metric ${metric.id} year ${year} has ${stateIds.size} states; expected ${WEATHER_EXPECTED_STATE_COUNT} states excluding District of Columbia.`,
+            );
+          }
+        }
+      }
 
       let allowedYears: Set<number> | null = null;
       let expectedWindowLabel: string | null = null;

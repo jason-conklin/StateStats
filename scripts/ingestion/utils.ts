@@ -28,6 +28,34 @@ export const DATA_SOURCE_CONFIGS = {
     homepageUrl: "https://www.bls.gov/lau/",
     apiDocsUrl: "https://download.bls.gov/pub/time.series/la/",
   },
+  noaaClimateAtAGlance: {
+    id: "noaa_climate_at_a_glance",
+    name: "NOAA Climate at a Glance",
+    description: "NOAA NCEI state-level climate time series for temperature and precipitation.",
+    homepageUrl: "https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/",
+    apiDocsUrl: "https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/statewide/time-series",
+  },
+  noaaCdo: {
+    id: "noaa_cdo",
+    name: "NOAA Climate Data Online",
+    description: "NOAA NCEI Climate Data Online annual station summaries.",
+    homepageUrl: "https://www.ncei.noaa.gov/cdo-web/",
+    apiDocsUrl: "https://www.ncdc.noaa.gov/cdo-web/webservices/v2",
+  },
+  noaaStormEvents: {
+    id: "noaa_storm_events",
+    name: "NOAA Storm Events Database",
+    description: "Official NOAA/NWS Storm Events records distributed by NOAA NCEI.",
+    homepageUrl: "https://www.ncei.noaa.gov/stormevents/",
+    apiDocsUrl: "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/",
+  },
+  usgsEarthquakeCatalog: {
+    id: "usgs_earthquake_catalog",
+    name: "USGS Earthquake Catalog",
+    description: "USGS FDSN earthquake event catalog.",
+    homepageUrl: "https://earthquake.usgs.gov/earthquakes/search/",
+    apiDocsUrl: "https://earthquake.usgs.gov/fdsnws/event/1/",
+  },
   censusAcsSynthetic: {
     id: "census_acs_synthetic",
     name: "U.S. Census ACS (synthetic fallback)",
@@ -287,6 +315,12 @@ export function buildCoverageWarnings(
   expectedStateCount = states.length,
 ) {
   const warnings: string[] = [];
+  const expectedLabel =
+    expectedStateCount === 50
+      ? "50 states"
+      : expectedStateCount === states.length
+        ? "50 states + DC"
+        : `${expectedStateCount} state(s)`;
   const years = Object.keys(coverageByYear)
     .map(Number)
     .sort((a, b) => a - b);
@@ -295,7 +329,7 @@ export function buildCoverageWarnings(
     const stateCount = coverageByYear[year] ?? 0;
     if (stateCount < expectedStateCount) {
       warnings.push(
-        `${logPrefix} Year ${year}: wrote ${stateCount} state(s); expected ${expectedStateCount} (50 states + DC).`,
+        `${logPrefix} Year ${year}: wrote ${stateCount} state(s); expected ${expectedLabel}.`,
       );
     }
   }
