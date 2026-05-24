@@ -3,13 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { MousePointer2 } from "lucide-react";
+import { MetricSelect, type MetricOption as SharedMetricOption } from "@/components/controls/MetricSelect";
 import { StateInfo } from "@/lib/types";
 import { getStateSeriesColor } from "./seriesStyle";
 
-type MetricOption = {
-  id: string;
-  name: string;
-  unit?: string | null;
+type MetricOption = SharedMetricOption & {
   description?: string | null;
 };
 
@@ -213,22 +211,12 @@ export function GraphExplorer({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700" htmlFor="metric-select">
-            Metric
-          </label>
-          <select
-            id="metric-select"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-slate-400 focus:outline-none"
+          <MetricSelect
+            metrics={metrics}
             value={selectedMetricId}
-            onChange={(e) => setSelectedMetricId(e.target.value)}
-            aria-label="Select metric"
-          >
-            {metrics.map((metric) => (
-              <option key={metric.id} value={metric.id}>
-                {metric.name} {metric.unit ? `(${metric.unit})` : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedMetricId}
+            className="w-full"
+          />
           {selectedMetric?.description ? (
             <p className="text-xs text-slate-500">{selectedMetric.description}</p>
           ) : null}

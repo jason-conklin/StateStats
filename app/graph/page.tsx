@@ -163,6 +163,7 @@ export default async function GraphPage(props: GraphPageProps) {
                 id: m.id,
                 name: m.name,
                 unit: m.unit,
+                category: m.category,
                 description: m.description,
               }))}
               states={graphStateList}
