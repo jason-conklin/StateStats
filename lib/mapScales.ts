@@ -1,5 +1,5 @@
-import { interpolateRgbBasis } from "d3-interpolate";
-import { scaleQuantize, scaleSequential } from "d3-scale";
+import { interpolateLab } from "d3-interpolate";
+import { scaleQuantize } from "d3-scale";
 
 export type QuantizeBucket = {
   color: string;
@@ -11,9 +11,13 @@ export type LegendTick = {
   offsetPct: number;
 };
 
+type MetricScaleTransform = "linear" | "pow" | "log";
+
 type MetricScaleConfig = {
-  type: "linear-quantize" | "log-sequential";
+  transform: MetricScaleTransform;
+  exponent?: number;
   zeroBaseline?: boolean;
+  legendTicks?: "earthquake";
 };
 
 export type ChoroplethScale = {
@@ -25,22 +29,32 @@ export type ChoroplethScale = {
 
 // A higher-contrast sequential green palette (light → dark).
 export const GREEN_STEPS = [
-  "#f4fbf7",
-  "#e0f5ea",
-  "#c2ead7",
-  "#9fdcc1",
-  "#73c7a0",
-  "#47aa7e",
-  "#27825b",
-  "#135640",
+  "#f2fbf6",
+  "#e4f6ee",
+  "#d4f0e4",
+  "#c0e8d8",
+  "#a9dfc9",
+  "#8dd2b5",
+  "#70c39e",
+  "#55ae82",
+  "#3b9467",
+  "#277850",
+  "#16583d",
+  "#0a3d2d",
   "#032f22",
 ];
 export const NO_DATA_COLOR = "#e5e7eb";
 
-export const metricScaleConfig: Record<string, MetricScaleConfig> = {
+const DEFAULT_METRIC_SCALE_CONFIG: MetricScaleConfig = {
+  transform: "pow",
+  exponent: 0.7,
+};
+
+export const metricScaleConfig: Record<string, Partial<MetricScaleConfig>> = {
   earthquake_count: {
-    type: "log-sequential",
+    transform: "log",
     zeroBaseline: true,
+    legendTicks: "earthquake",
   },
 };
 
@@ -49,7 +63,54 @@ function isValidDomainValue(value: number | null): value is number {
 }
 
 function getContinuousGradient() {
-  return `linear-gradient(to right, ${GREEN_STEPS.join(", ")})`;
+  const stopCount = 18;
+  const stops = Array.from({ length: stopCount }, (_, index) => {
+    const t = index / (stopCount - 1);
+    return `${interpolatePalette(t)} ${(t * 100).toFixed(1)}%`;
+  });
+
+  return `linear-gradient(to right, ${stops.join(", ")})`;
+}
+
+function clamp01(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function interpolatePalette(t: number) {
+  const normalizedT = clamp01(t);
+  const scaled = normalizedT * (GREEN_STEPS.length - 1);
+  const index = Math.min(GREEN_STEPS.length - 2, Math.floor(scaled));
+  const localT = scaled - index;
+
+  return interpolateLab(GREEN_STEPS[index], GREEN_STEPS[index + 1])(localT);
+}
+
+function normalizeValue(value: number, min: number, max: number) {
+  if (max <= min) return 0;
+  return clamp01((value - min) / (max - min));
+}
+
+function transformNormalizedValue(t: number, config: MetricScaleConfig) {
+  const normalizedT = clamp01(t);
+
+  if (config.transform === "pow") {
+    return normalizedT ** (config.exponent ?? DEFAULT_METRIC_SCALE_CONFIG.exponent ?? 0.7);
+  }
+
+  return normalizedT;
+}
+
+function transformRawValue(value: number, min: number, max: number, config: MetricScaleConfig) {
+  if (config.transform === "log") {
+    if (value < 0 || min < 0 || max < 0) return null;
+    const logMin = Math.log1p(min);
+    const logMax = Math.log1p(max);
+    const span = logMax - logMin;
+    if (span <= 0) return 0;
+    return clamp01((Math.log1p(value) - logMin) / span);
+  }
+
+  return transformNormalizedValue(normalizeValue(value, min, max), config);
 }
 
 export function createQuantizeColorScale(min: number | null, max: number | null) {
@@ -86,12 +147,9 @@ export function createContinuousColorScale(min: number | null, max: number | nul
     };
   }
 
-  const interpolator = interpolateRgbBasis(GREEN_STEPS);
-  const scale = scaleSequential(interpolator).domain([min, max]);
-
   const colorScale = (value: number | null) => {
     if (value === null || Number.isNaN(value)) return NO_DATA_COLOR;
-    return scale(value);
+    return interpolatePalette(normalizeValue(value, min, max));
   };
 
   const gradient = getContinuousGradient();
@@ -122,17 +180,29 @@ function buildEarthquakeLegendTicks(max: number): LegendTick[] {
 }
 
 function createLogSequentialColorScale(min: number, max: number): ChoroplethScale {
-  const interpolator = interpolateRgbBasis(GREEN_STEPS);
-  const scale = scaleSequential(interpolator).domain([Math.log1p(min), Math.log1p(max)]);
+  return createConfiguredSequentialColorScale(min, max, {
+    ...DEFAULT_METRIC_SCALE_CONFIG,
+    transform: "log",
+    legendTicks: "earthquake",
+  });
+}
+
+function createConfiguredSequentialColorScale(
+  min: number,
+  max: number,
+  config: MetricScaleConfig,
+): ChoroplethScale {
+  const legendTicks = config.legendTicks === "earthquake" ? buildEarthquakeLegendTicks(max) : undefined;
 
   return {
     colorScale: (value: number | null) => {
-      if (value === null || Number.isNaN(value) || value < 0) return NO_DATA_COLOR;
-      return scale(Math.log1p(value));
+      if (value === null || Number.isNaN(value)) return NO_DATA_COLOR;
+      const transformedValue = transformRawValue(value, min, max, config);
+      return transformedValue === null ? NO_DATA_COLOR : interpolatePalette(transformedValue);
     },
     gradient: getContinuousGradient(),
     domain: [min, max],
-    legendTicks: buildEarthquakeLegendTicks(max),
+    legendTicks,
   };
 }
 
@@ -149,22 +219,16 @@ export function createMetricColorScale(
     };
   }
 
-  const config = metricId ? metricScaleConfig[metricId] : undefined;
+  const config: MetricScaleConfig = {
+    ...DEFAULT_METRIC_SCALE_CONFIG,
+    ...(metricId ? metricScaleConfig[metricId] : undefined),
+  };
   const domainMin = config?.zeroBaseline ? 0 : min;
   const domainMax = max;
 
-  if (config?.type === "log-sequential") {
-    return createLogSequentialColorScale(domainMin, domainMax);
-  }
-
-  const { colorScale } = createQuantizeColorScale(domainMin, domainMax);
-  const { gradient } = createContinuousColorScale(domainMin, domainMax);
-
-  return {
-    colorScale,
-    gradient,
-    domain: [domainMin, domainMax],
-  };
+  return config.transform === "log"
+    ? createLogSequentialColorScale(domainMin, domainMax)
+    : createConfiguredSequentialColorScale(domainMin, domainMax, config);
 }
 
 export const NEUTRAL_COLOR = NO_DATA_COLOR;
