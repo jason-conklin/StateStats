@@ -13,7 +13,7 @@ import {
 const dataHighlights = [
   {
     title: "Public data sources",
-    body: "StateStats uses official public datasets including U.S. Census ACS and BLS Labor Statistics.",
+    body: "StateStats uses official public datasets from sources including U.S. Census ACS, BLS LAUS, NOAA climate and storm records, and the USGS earthquake catalog.",
     Icon: Database,
   },
   {

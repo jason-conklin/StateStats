@@ -17,7 +17,11 @@ type MetricScaleConfig = {
   transform: MetricScaleTransform;
   exponent?: number;
   zeroBaseline?: boolean;
+  domainStrategy?: "full" | "percentile";
+  lowerPercentile?: number;
+  upperPercentile?: number;
   legendTicks?: "earthquake";
+  legendNote?: string;
 };
 
 export type ChoroplethScale = {
@@ -25,6 +29,7 @@ export type ChoroplethScale = {
   gradient: string;
   domain: [number, number] | null;
   legendTicks?: LegendTick[];
+  legendNote?: string;
 };
 
 // A higher-contrast sequential green palette (light → dark).
@@ -51,6 +56,12 @@ const DEFAULT_METRIC_SCALE_CONFIG: MetricScaleConfig = {
 };
 
 export const metricScaleConfig: Record<string, Partial<MetricScaleConfig>> = {
+  average_annual_temperature: {
+    domainStrategy: "percentile",
+    lowerPercentile: 0.05,
+    upperPercentile: 0.95,
+    legendNote: "Color scale trimmed for outliers",
+  },
   earthquake_count: {
     transform: "log",
     zeroBaseline: true,
@@ -58,8 +69,8 @@ export const metricScaleConfig: Record<string, Partial<MetricScaleConfig>> = {
   },
 };
 
-function isValidDomainValue(value: number | null): value is number {
-  return value !== null && Number.isFinite(value) && !Number.isNaN(value);
+function isValidDomainValue(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && !Number.isNaN(value);
 }
 
 function getContinuousGradient() {
@@ -111,6 +122,51 @@ function transformRawValue(value: number, min: number, max: number, config: Metr
   }
 
   return transformNormalizedValue(normalizeValue(value, min, max), config);
+}
+
+function getNumericValues(values: Array<number | null | undefined> | undefined) {
+  return (values ?? []).filter((value): value is number => isValidDomainValue(value));
+}
+
+function getPercentile(sortedValues: number[], percentile: number) {
+  if (!sortedValues.length) return null;
+  if (sortedValues.length === 1) return sortedValues[0];
+
+  const boundedPercentile = clamp01(percentile);
+  const index = (sortedValues.length - 1) * boundedPercentile;
+  const lowerIndex = Math.floor(index);
+  const upperIndex = Math.ceil(index);
+  const lowerValue = sortedValues[lowerIndex];
+  const upperValue = sortedValues[upperIndex];
+
+  if (lowerIndex === upperIndex || upperValue === undefined) return lowerValue;
+
+  return lowerValue + (upperValue - lowerValue) * (index - lowerIndex);
+}
+
+function resolveColorDomain(
+  min: number,
+  max: number,
+  config: MetricScaleConfig,
+  values?: Array<number | null | undefined>,
+): [number, number] {
+  if (config.domainStrategy !== "percentile") {
+    return [config.zeroBaseline ? 0 : min, max];
+  }
+
+  const sortedValues = getNumericValues(values).sort((a, b) => a - b);
+  const percentileMin = getPercentile(sortedValues, config.lowerPercentile ?? 0.05);
+  const percentileMax = getPercentile(sortedValues, config.upperPercentile ?? 0.95);
+
+  if (
+    !isValidDomainValue(percentileMin) ||
+    !isValidDomainValue(percentileMax) ||
+    percentileMin >= percentileMax
+  ) {
+    return [config.zeroBaseline ? 0 : min, max];
+  }
+
+  return [percentileMin, percentileMax];
 }
 
 export function createQuantizeColorScale(min: number | null, max: number | null) {
@@ -179,14 +235,6 @@ function buildEarthquakeLegendTicks(max: number): LegendTick[] {
   }));
 }
 
-function createLogSequentialColorScale(min: number, max: number): ChoroplethScale {
-  return createConfiguredSequentialColorScale(min, max, {
-    ...DEFAULT_METRIC_SCALE_CONFIG,
-    transform: "log",
-    legendTicks: "earthquake",
-  });
-}
-
 function createConfiguredSequentialColorScale(
   min: number,
   max: number,
@@ -203,6 +251,7 @@ function createConfiguredSequentialColorScale(
     gradient: getContinuousGradient(),
     domain: [min, max],
     legendTicks,
+    legendNote: config.legendNote,
   };
 }
 
@@ -210,6 +259,7 @@ export function createMetricColorScale(
   metricId: string | null | undefined,
   min: number | null,
   max: number | null,
+  values?: Array<number | null | undefined>,
 ): ChoroplethScale {
   if (!isValidDomainValue(min) || !isValidDomainValue(max) || min === max) {
     return {
@@ -223,12 +273,9 @@ export function createMetricColorScale(
     ...DEFAULT_METRIC_SCALE_CONFIG,
     ...(metricId ? metricScaleConfig[metricId] : undefined),
   };
-  const domainMin = config?.zeroBaseline ? 0 : min;
-  const domainMax = max;
+  const [domainMin, domainMax] = resolveColorDomain(min, max, config, values);
 
-  return config.transform === "log"
-    ? createLogSequentialColorScale(domainMin, domainMax)
-    : createConfiguredSequentialColorScale(domainMin, domainMax, config);
+  return createConfiguredSequentialColorScale(domainMin, domainMax, config);
 }
 
 export const NEUTRAL_COLOR = NO_DATA_COLOR;

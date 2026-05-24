@@ -166,18 +166,30 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
     return null;
   }, [yearDomain, globalMin, globalMax]);
 
-  const { colorScale, gradient, legendDomain, legendTicks } = useMemo(() => {
+  const { colorScale, gradient, legendDomain, legendTicks, legendNote } = useMemo(() => {
     if (!colorDomain) {
-      return { colorScale: null, gradient: "", legendDomain: null, legendTicks: undefined };
+      return {
+        colorScale: null,
+        gradient: "",
+        legendDomain: null,
+        legendTicks: undefined,
+        legendNote: undefined,
+      };
     }
-    const scale = createMetricColorScale(selectedMetric?.id, colorDomain[0], colorDomain[1]);
+    const scale = createMetricColorScale(
+      selectedMetric?.id,
+      colorDomain[0],
+      colorDomain[1],
+      Object.values(valuesByStateId),
+    );
     return {
       colorScale: scale.colorScale,
       gradient: scale.gradient,
       legendDomain: scale.domain,
       legendTicks: scale.legendTicks,
+      legendNote: scale.legendNote,
     };
-  }, [colorDomain, selectedMetric?.id]);
+  }, [colorDomain, selectedMetric?.id, valuesByStateId]);
 
   const tooltipContent = useMemo(() => {
     if (!hovered) return null;
@@ -732,6 +744,7 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                       gradient={gradient}
                       domain={legendDomain}
                       ticks={legendTicks}
+                      note={legendNote}
                     />
                   </div>
                 ) : null}

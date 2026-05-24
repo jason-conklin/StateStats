@@ -16,6 +16,7 @@ type LegendProps =
       domain: [number, number] | null;
       gradient: string;
       ticks?: LegendTick[];
+      note?: string;
     };
 
 export function Legend(props: LegendProps) {
@@ -97,6 +98,9 @@ export function Legend(props: LegendProps) {
                 </span>
               </div>
             )}
+            {props.note ? (
+              <p className="mt-1.5 text-[10px] leading-tight text-slate-500">{props.note}</p>
+            ) : null}
           </div>
         </div>
       )}
