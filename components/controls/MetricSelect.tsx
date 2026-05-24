@@ -41,10 +41,93 @@ type DropdownPosition = {
   width: number;
 };
 
+export type MetricGroup = "Weather" | "People" | "Money" | "Other";
+
+type MetricGroupSection = {
+  group: MetricGroup;
+  metrics: Array<{ metric: MetricOption; index: number }>;
+};
+
 const DROPDOWN_VIEWPORT_PADDING = 8;
 const DROPDOWN_VERTICAL_GAP = 8;
 const DROPDOWN_OPTION_HEIGHT = 52;
+const DROPDOWN_GROUP_HEADING_HEIGHT = 30;
 const DROPDOWN_VERTICAL_PADDING = 12;
+const METRIC_GROUP_ORDER: MetricGroup[] = ["Weather", "People", "Money", "Other"];
+const METRIC_GROUP_BY_ID: Record<string, MetricGroup> = {
+  annual_precipitation: "Weather",
+  annual_snowfall: "Weather",
+  average_annual_temperature: "Weather",
+  earthquake_count: "Weather",
+  tornado_count: "Weather",
+  population_total: "People",
+  unemployment_rate: "People",
+  median_age: "People",
+  median_home_value: "Money",
+  median_household_income: "Money",
+};
+const METRIC_ORDER_BY_ID: Record<string, number> = {
+  annual_precipitation: 0,
+  annual_snowfall: 1,
+  average_annual_temperature: 2,
+  earthquake_count: 3,
+  tornado_count: 4,
+  population_total: 5,
+  unemployment_rate: 6,
+  median_age: 7,
+  median_home_value: 8,
+  median_household_income: 9,
+};
+
+export function getMetricGroup(metricId: string): MetricGroup {
+  return METRIC_GROUP_BY_ID[metricId] ?? "Other";
+}
+
+function buildMetricGroupSections(metrics: MetricOption[]): MetricGroupSection[] {
+  const sortedMetrics = metrics
+    .map((metric, originalIndex) => ({ metric, originalIndex }))
+    .sort((left, right) => {
+      const leftGroupIndex = METRIC_GROUP_ORDER.indexOf(getMetricGroup(left.metric.id));
+      const rightGroupIndex = METRIC_GROUP_ORDER.indexOf(getMetricGroup(right.metric.id));
+
+      if (leftGroupIndex !== rightGroupIndex) {
+        return leftGroupIndex - rightGroupIndex;
+      }
+
+      const leftMetricIndex = METRIC_ORDER_BY_ID[left.metric.id] ?? Number.MAX_SAFE_INTEGER;
+      const rightMetricIndex = METRIC_ORDER_BY_ID[right.metric.id] ?? Number.MAX_SAFE_INTEGER;
+
+      if (leftMetricIndex !== rightMetricIndex) {
+        return leftMetricIndex - rightMetricIndex;
+      }
+
+      return left.originalIndex - right.originalIndex;
+    });
+
+  const groupedMetrics = new Map<MetricGroup, MetricOption[]>();
+  sortedMetrics.forEach(({ metric }) => {
+    const group = getMetricGroup(metric.id);
+    const groupMetrics = groupedMetrics.get(group) ?? [];
+    groupMetrics.push(metric);
+    groupedMetrics.set(group, groupMetrics);
+  });
+
+  let optionIndex = 0;
+  return METRIC_GROUP_ORDER.flatMap((group) => {
+    const groupMetrics = groupedMetrics.get(group);
+    if (!groupMetrics?.length) return [];
+
+    return [
+      {
+        group,
+        metrics: groupMetrics.map((metric) => ({
+          metric,
+          index: optionIndex++,
+        })),
+      },
+    ];
+  });
+}
 
 function EarthquakeIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -146,8 +229,13 @@ export function MetricSelect({
   const listboxRef = useRef<HTMLDivElement | null>(null);
   const optionRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  const selectedIndex = useMemo(() => metrics.findIndex((metric) => metric.id === value), [metrics, value]);
-  const selectedMetric = selectedIndex >= 0 ? metrics[selectedIndex] : metrics[0];
+  const metricGroupSections = useMemo(() => buildMetricGroupSections(metrics), [metrics]);
+  const orderedMetrics = useMemo(
+    () => metricGroupSections.flatMap((section) => section.metrics.map(({ metric }) => metric)),
+    [metricGroupSections],
+  );
+  const selectedIndex = useMemo(() => orderedMetrics.findIndex((metric) => metric.id === value), [orderedMetrics, value]);
+  const selectedMetric = selectedIndex >= 0 ? orderedMetrics[selectedIndex] : orderedMetrics[0];
   const triggerPillLabel = useMemo(() => getUnitPillLabel(selectedMetric), [selectedMetric]);
   const isStealth = variant === "stealthTitle";
 
@@ -158,7 +246,10 @@ export function MetricSelect({
     if (rect.width <= 0 || rect.height <= 0) return null;
     const viewportWidth = typeof window === "undefined" ? rect.width : window.innerWidth;
     const viewportHeight = typeof window === "undefined" ? rect.bottom : window.innerHeight;
-    const estimatedDropdownHeight = metrics.length * DROPDOWN_OPTION_HEIGHT + DROPDOWN_VERTICAL_PADDING;
+    const estimatedDropdownHeight =
+      orderedMetrics.length * DROPDOWN_OPTION_HEIGHT +
+      metricGroupSections.length * DROPDOWN_GROUP_HEADING_HEIGHT +
+      DROPDOWN_VERTICAL_PADDING;
     const minStealthWidth = 320;
     const desiredWidth = isStealth ? Math.max(rect.width, minStealthWidth) : rect.width;
     const maxWidth = Math.max(220, viewportWidth - DROPDOWN_VIEWPORT_PADDING * 2);
@@ -178,13 +269,13 @@ export function MetricSelect({
       top,
       width,
     };
-  }, [isStealth, metrics.length]);
+  }, [isStealth, metricGroupSections.length, orderedMetrics.length]);
 
   const openMenu = (targetIndex: number) => {
-    if (!metrics.length) return;
+    if (!orderedMetrics.length) return;
     const nextPosition = getDropdownPosition();
     if (!nextPosition) return;
-    const bounded = Math.min(Math.max(targetIndex, 0), metrics.length - 1);
+    const bounded = Math.min(Math.max(targetIndex, 0), orderedMetrics.length - 1);
     setActiveIndex(bounded);
     setDropdownPosition(nextPosition);
     setIsOpen(true);
@@ -195,7 +286,7 @@ export function MetricSelect({
   };
 
   const selectByIndex = (index: number) => {
-    const next = metrics[index];
+    const next = orderedMetrics[index];
     if (!next) return;
     onChange(next.id);
     setActiveIndex(index);
@@ -204,10 +295,10 @@ export function MetricSelect({
   };
 
   const moveActive = (delta: number) => {
-    if (!metrics.length) return;
+    if (!orderedMetrics.length) return;
     setActiveIndex((prev) => {
-      const current = prev >= 0 && prev < metrics.length ? prev : selectedIndex >= 0 ? selectedIndex : 0;
-      return (current + delta + metrics.length) % metrics.length;
+      const current = prev >= 0 && prev < orderedMetrics.length ? prev : selectedIndex >= 0 ? selectedIndex : 0;
+      return (current + delta + orderedMetrics.length) % orderedMetrics.length;
     });
   };
 
@@ -271,11 +362,11 @@ export function MetricSelect({
       id={listboxId}
       role="listbox"
       aria-label="Select metric"
-      aria-activedescendant={metrics[activeIndex] ? `${listboxId}-option-${activeIndex}` : undefined}
+      aria-activedescendant={orderedMetrics[activeIndex] ? `${listboxId}-option-${activeIndex}` : undefined}
       tabIndex={-1}
       ref={listboxRef}
       onKeyDown={(event) => {
-        if (!metrics.length) return;
+        if (!orderedMetrics.length) return;
         if (event.key === "ArrowDown") {
           event.preventDefault();
           moveActive(1);
@@ -293,7 +384,7 @@ export function MetricSelect({
         }
         if (event.key === "End") {
           event.preventDefault();
-          setActiveIndex(metrics.length - 1);
+          setActiveIndex(orderedMetrics.length - 1);
           return;
         }
         if (event.key === "Enter" || event.key === " ") {
@@ -311,41 +402,59 @@ export function MetricSelect({
           closeMenu();
         }
       }}
-      className="overflow-visible rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur-sm focus:outline-none"
+      className="max-h-[min(80vh,38rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur-sm focus:outline-none"
     >
-      {metrics.map((metric, index) => {
-        const isSelected = metric.id === value;
-        const isActive = index === activeIndex;
-        return (
+      {metricGroupSections.map((section, sectionIndex) => (
+        <div
+          key={section.group}
+          role="group"
+          aria-labelledby={`${listboxId}-group-${section.group.toLowerCase()}`}
+          className={sectionIndex === 0 ? "" : "mt-1 border-t border-slate-100 pt-1"}
+        >
           <div
-            key={metric.id}
-            ref={(node) => {
-              optionRefs.current[index] = node;
-            }}
-            id={`${listboxId}-option-${index}`}
-            role="option"
-            aria-selected={isSelected}
-            onMouseEnter={() => setActiveIndex(index)}
-            onClick={() => selectByIndex(index)}
-            className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
-              isSelected
-                ? "bg-emerald-50 text-emerald-900"
-                : isActive
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-800 hover:bg-slate-50"
-            }`}
+            id={`${listboxId}-group-${section.group.toLowerCase()}`}
+            className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-              {getMetricIcon(metric.id)}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium leading-tight text-slate-900">{metric.name}</span>
-              <span className="block truncate text-xs text-slate-500">{getMetricMeta(metric)}</span>
-            </span>
-            {isSelected ? <Check className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden /> : null}
+            {section.group}
           </div>
-        );
-      })}
+          {section.metrics.map(({ metric, index }) => {
+            const isSelected = metric.id === value;
+            const isActive = index === activeIndex;
+            return (
+              <div
+                key={metric.id}
+                ref={(node) => {
+                  optionRefs.current[index] = node;
+                }}
+                id={`${listboxId}-option-${index}`}
+                role="option"
+                aria-selected={isSelected}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => selectByIndex(index)}
+                className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
+                  isSelected
+                    ? "bg-emerald-50 text-emerald-900"
+                    : isActive
+                      ? "bg-slate-100 text-slate-900"
+                      : "text-slate-800 hover:bg-slate-50"
+                }`}
+              >
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  {getMetricIcon(metric.id)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium leading-tight text-slate-900">{metric.name}</span>
+                  <span className="block truncate text-xs text-slate-500">{getMetricMeta(metric)}</span>
+                </span>
+                {isSelected ? <Check className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden /> : null}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      {!metricGroupSections.length ? (
+        <div className="px-3 py-2 text-sm text-slate-500">No metrics available</div>
+      ) : null}
     </div>
   );
 
@@ -390,7 +499,7 @@ export function MetricSelect({
           aria-label={isStealth ? "Change metric" : undefined}
           onClick={() => (isOpen ? closeMenu() : openMenu(selectedIndex >= 0 ? selectedIndex : 0))}
           onKeyDown={(event) => {
-            if (!metrics.length) return;
+            if (!orderedMetrics.length) return;
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
               if (!isOpen) {
