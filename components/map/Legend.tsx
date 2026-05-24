@@ -1,7 +1,7 @@
 'use client';
 
-import { QuantizeBucket } from "@/lib/mapScales";
-import { formatMetricValue } from "@/lib/format";
+import { LegendTick, QuantizeBucket } from "@/lib/mapScales";
+import { formatLegendValue, formatMetricValue } from "@/lib/format";
 
 type LegendProps =
   | {
@@ -15,12 +15,14 @@ type LegendProps =
       unitLabel?: string | null;
       domain: [number, number] | null;
       gradient: string;
+      ticks?: LegendTick[];
     };
 
 export function Legend(props: LegendProps) {
   const domainMin = props.domain?.[0] ?? null;
   const domainMax = props.domain?.[1] ?? null;
   const unitLabel = props.unitLabel ?? undefined;
+  const legendTicks = props.scaleType === "continuous" ? (props.ticks ?? []) : [];
 
   return (
     <div className="w-full max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-[0_8px_20px_rgba(0,0,0,0.1)] backdrop-blur-sm sm:max-w-full sm:p-2">
@@ -48,27 +50,53 @@ export function Legend(props: LegendProps) {
         </div>
       ) : (
         <div className="mt-2 space-y-2">
-          <div
-            className="h-2 rounded-md border border-[color:var(--ss-green-mid)]/50 shadow-inner"
-            style={{ backgroundImage: props.gradient }}
-          />
-          <div className="flex items-center justify-between gap-4 text-xs text-slate-600">
-            <span className="min-w-0 flex-1 text-left tabular-nums">
-              <span className="sm:hidden">
-                {domainMin !== null ? formatMetricValue(domainMin, unitLabel, { compact: true }) : "–"}
-              </span>
-              <span className="hidden sm:inline">
-                {domainMin !== null ? formatMetricValue(domainMin, unitLabel) : "–"}
-              </span>
-            </span>
-            <span className="min-w-0 flex-1 text-right tabular-nums">
-              <span className="sm:hidden">
-                {domainMax !== null ? formatMetricValue(domainMax, unitLabel, { compact: true }) : "–"}
-              </span>
-              <span className="hidden sm:inline">
-                {domainMax !== null ? formatMetricValue(domainMax, unitLabel) : "–"}
-              </span>
-            </span>
+          <div>
+            <div
+              className="h-2 rounded-md border border-[color:var(--ss-green-mid)]/50 shadow-inner"
+              style={{ backgroundImage: props.gradient }}
+            />
+            {legendTicks.length ? (
+              <div className="relative mt-1.5 h-7 text-[10px] text-slate-600">
+                {legendTicks.map((tick, index) => {
+                  const isFirst = index === 0;
+                  const isLast = index === legendTicks.length - 1;
+                  return (
+                    <span
+                      key={`${tick.value}-${tick.offsetPct}`}
+                      className={`absolute top-0 tabular-nums ${
+                        isFirst
+                          ? "translate-x-0 text-left"
+                          : isLast
+                            ? "-translate-x-full text-right"
+                            : "-translate-x-1/2 text-center"
+                      }`}
+                      style={{ left: `${tick.offsetPct}%` }}
+                    >
+                      {formatLegendValue(tick.value)}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-2 flex items-center justify-between gap-4 text-xs text-slate-600">
+                <span className="min-w-0 flex-1 text-left tabular-nums">
+                  <span className="sm:hidden">
+                    {domainMin !== null ? formatMetricValue(domainMin, unitLabel, { compact: true }) : "–"}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {domainMin !== null ? formatMetricValue(domainMin, unitLabel) : "–"}
+                  </span>
+                </span>
+                <span className="min-w-0 flex-1 text-right tabular-nums">
+                  <span className="sm:hidden">
+                    {domainMax !== null ? formatMetricValue(domainMax, unitLabel, { compact: true }) : "–"}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {domainMax !== null ? formatMetricValue(domainMax, unitLabel) : "–"}
+                  </span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

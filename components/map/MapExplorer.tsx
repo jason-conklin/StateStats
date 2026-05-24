@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Legend } from "./Legend";
 import { USChoropleth } from "./USChoropleth";
 import { useMapZoom } from "./useMapZoom";
-import { createContinuousColorScale, createQuantizeColorScale } from "@/lib/mapScales";
+import { createMetricColorScale } from "@/lib/mapScales";
 import { formatMetricValue } from "@/lib/format";
 import { StateInfo } from "@/lib/types";
 import { DataTablePanel } from "./DataTablePanel";
@@ -166,14 +166,18 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
     return null;
   }, [yearDomain, globalMin, globalMax]);
 
-  const { colorScale, gradient } = useMemo(() => {
+  const { colorScale, gradient, legendDomain, legendTicks } = useMemo(() => {
     if (!colorDomain) {
-      return { colorScale: null, gradient: "" };
+      return { colorScale: null, gradient: "", legendDomain: null, legendTicks: undefined };
     }
-    const { colorScale } = createQuantizeColorScale(colorDomain[0], colorDomain[1]);
-    const { gradient } = createContinuousColorScale(colorDomain[0], colorDomain[1]);
-    return { colorScale, gradient };
-  }, [colorDomain]);
+    const scale = createMetricColorScale(selectedMetric?.id, colorDomain[0], colorDomain[1]);
+    return {
+      colorScale: scale.colorScale,
+      gradient: scale.gradient,
+      legendDomain: scale.domain,
+      legendTicks: scale.legendTicks,
+    };
+  }, [colorDomain, selectedMetric?.id]);
 
   const tooltipContent = useMemo(() => {
     if (!hovered) return null;
@@ -726,7 +730,8 @@ export function MapExplorer({ metrics, defaultMetricId, defaultYear, states, fea
                       scaleType="continuous"
                       unitLabel={selectedMetric?.unit ?? undefined}
                       gradient={gradient}
-                      domain={colorDomain}
+                      domain={legendDomain}
+                      ticks={legendTicks}
                     />
                   </div>
                 ) : null}

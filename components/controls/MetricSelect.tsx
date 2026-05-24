@@ -53,7 +53,7 @@ const DROPDOWN_VERTICAL_GAP = 8;
 const DROPDOWN_OPTION_HEIGHT = 52;
 const DROPDOWN_GROUP_HEADING_HEIGHT = 30;
 const DROPDOWN_VERTICAL_PADDING = 12;
-const METRIC_GROUP_ORDER: MetricGroup[] = ["Weather", "People", "Money", "Other"];
+const METRIC_GROUP_ORDER: MetricGroup[] = ["Money", "People", "Weather", "Other"];
 const METRIC_GROUP_BY_ID: Record<string, MetricGroup> = {
   annual_precipitation: "Weather",
   annual_snowfall: "Weather",
