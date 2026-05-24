@@ -2,36 +2,90 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { usePathname, useRouter } from "next/navigation";
 import { MousePointer2 } from "lucide-react";
-import { MetricSelect, type MetricOption as SharedMetricOption } from "@/components/controls/MetricSelect";
+import {
+  MetricSelect,
+  getMetricGroup,
+  getMetricIcon,
+  type MetricGroup,
+  type MetricOption as SharedMetricOption,
+} from "@/components/controls/MetricSelect";
 import { StateInfo } from "@/lib/types";
-import { getStateSeriesColor } from "./seriesStyle";
+import { ChartDataRow, ChartSeries, ComparisonMode, NormalizationMode, SeriesPoint, getRawValueKey } from "./chartTypes";
+import { getMetricSeriesStyle, getStateSeriesStyle } from "./seriesStyle";
 
 type MetricOption = SharedMetricOption & {
   description?: string | null;
 };
 
-type SeriesPoint = { year: number; value: number | null };
-type Series = { stateId: string; stateName: string; points: SeriesPoint[] };
+type StateSeries = {
+  stateId: string;
+  stateName: string;
+  points: SeriesPoint[];
+};
+
+type MetricSeries = {
+  metricId: string;
+  metricName: string;
+  unit?: string | null;
+  points: SeriesPoint[];
+};
 
 type Props = {
   metrics: MetricOption[];
   states: StateInfo[];
+  initialMode: ComparisonMode;
   initialMetricId: string;
   initialSelectedStates: string[];
+  initialSelectedStateId: string;
+  initialSelectedMetricIds: string[];
   availableYears: number[];
   initialYearRange: { start: number; end: number };
-  initialNormalization: "raw" | "indexed";
-  initialSeries: Series[];
+  initialNormalization: NormalizationMode;
+  initialStateSeries: StateSeries[];
+  initialMetricSeries: MetricSeries[];
 };
 
-export type ChartDataRow = { year: number; [stateId: string]: number | null };
+type ChartContainerProps = {
+  chartData: ChartDataRow[];
+  series: ChartSeries[];
+  normalization: NormalizationMode;
+  yAxisUnit?: string | null;
+  onZoomChange?: (isZoomed: boolean) => void;
+};
 
-function normalizeSeries(
-  series: Series[],
-  selectedStateIds: string[],
+type StateGraphResponse = {
+  availableYears: number[];
+  series: StateSeries[];
+};
+
+type MetricGraphResponse = {
+  availableYears: number[];
+  series: MetricSeries[];
+};
+
+const METRIC_GROUP_ORDER: MetricGroup[] = ["Money", "People", "Weather", "Other"];
+
+const ChartContainer = dynamic<ChartContainerProps>(
+  () => import("./GraphInner").then((mod) => mod.default),
+  { ssr: false },
+);
+
+function getYearRangeFromYears(years: number[]) {
+  const start = years[0] ?? new Date().getFullYear();
+  const end = years[years.length - 1] ?? start;
+  return { start, end };
+}
+
+function buildLoadKey(stateId: string, metricIds: string[]) {
+  return `${stateId}|${metricIds.join(",")}`;
+}
+
+function normalizeSeriesForChart(
+  series: ChartSeries[],
   yearRange: { start: number; end: number },
-  mode: "raw" | "indexed",
+  mode: NormalizationMode,
 ) {
   const sortedYears = Array.from(
     { length: Math.max(0, yearRange.end - yearRange.start) + 1 },
@@ -40,18 +94,15 @@ function normalizeSeries(
 
   const chartRows: ChartDataRow[] = sortedYears.map((year) => ({ year: Number(year) }));
 
-  selectedStateIds.forEach((stateId) => {
-    const seriesEntry = series.find((s) => s.stateId === stateId);
-    if (!seriesEntry) return;
-
-    const pointsByYear = new Map(seriesEntry.points.map((p) => [Number(p.year), p.value] as const));
+  series.forEach((seriesItem) => {
+    const pointsByYear = new Map(seriesItem.points.map((point) => [Number(point.year), point.value] as const));
     let baseValue: number | null = null;
+
     if (mode === "indexed") {
       const startValue = pointsByYear.get(yearRange.start);
       if (startValue !== null && startValue !== undefined && !Number.isNaN(startValue)) {
         baseValue = startValue;
       } else {
-        // fallback to first non-null in range
         for (const year of sortedYears) {
           const candidate = pointsByYear.get(year);
           if (candidate !== null && candidate !== undefined && !Number.isNaN(candidate)) {
@@ -63,15 +114,18 @@ function normalizeSeries(
     }
 
     chartRows.forEach((row) => {
-      const value = pointsByYear.get(row.year) ?? null;
+      const rawValue = pointsByYear.get(row.year) ?? null;
+      row[getRawValueKey(seriesItem.id)] = rawValue;
+
       if (mode === "raw") {
-        row[stateId] = value;
+        row[seriesItem.id] = rawValue;
+        return;
+      }
+
+      if (rawValue === null || baseValue === null || baseValue === 0) {
+        row[seriesItem.id] = null;
       } else {
-        if (value === null || baseValue === null || baseValue === 0) {
-          row[stateId] = null;
-        } else {
-          row[stateId] = Number(((value / baseValue) * 100).toFixed(1));
-        }
+        row[seriesItem.id] = Number(((rawValue / baseValue) * 100).toFixed(1));
       }
     });
   });
@@ -79,54 +133,230 @@ function normalizeSeries(
   return chartRows;
 }
 
-type ChartContainerProps = {
-  chartData: ChartDataRow[];
-  selectedStateIds: string[];
-  states: StateInfo[];
-  metricUnit?: string | null;
-  normalization: "raw" | "indexed";
-  onZoomChange?: (isZoomed: boolean) => void;
-};
+function buildStateChartSeries(
+  stateSeries: StateSeries[],
+  selectedStateIds: string[],
+  states: StateInfo[],
+  selectedMetric?: MetricOption,
+): ChartSeries[] {
+  return selectedStateIds
+    .map((stateId): ChartSeries | null => {
+      const seriesEntry = stateSeries.find((item) => item.stateId === stateId);
+      if (!seriesEntry) return null;
+      const state = states.find((item) => item.id === stateId);
+      const style = getStateSeriesStyle(stateId);
 
-const ChartContainer = dynamic<ChartContainerProps>(
-  () => import("./GraphInner").then((mod) => mod.default),
-  { ssr: false },
-);
+      return {
+        id: stateId,
+        label: state?.name ?? seriesEntry.stateName ?? stateId,
+        unit: selectedMetric?.unit,
+        color: style.color,
+        dashArray: style.dashArray,
+        points: seriesEntry.points,
+      } satisfies ChartSeries;
+    })
+    .filter((item): item is ChartSeries => Boolean(item));
+}
+
+function buildMetricChartSeries(
+  metricSeries: MetricSeries[],
+  selectedMetricIds: string[],
+  metrics: MetricOption[],
+): ChartSeries[] {
+  return selectedMetricIds
+    .map((metricId, index): ChartSeries | null => {
+      const seriesEntry = metricSeries.find((item) => item.metricId === metricId);
+      const metric = metrics.find((item) => item.id === metricId);
+      if (!seriesEntry || !metric) return null;
+      const style = getMetricSeriesStyle(metricId, index);
+
+      return {
+        id: metricId,
+        label: metric.name ?? seriesEntry.metricName,
+        unit: metric.unit ?? seriesEntry.unit,
+        color: style.color,
+        dashArray: style.dashArray,
+        points: seriesEntry.points,
+      } satisfies ChartSeries;
+    })
+    .filter((item): item is ChartSeries => Boolean(item));
+}
+
+function getMetricUnitKey(metric: MetricOption | undefined) {
+  return metric?.unit?.trim().toLowerCase() ?? "";
+}
 
 export function GraphExplorer({
   metrics,
   states,
+  initialMode,
   initialMetricId,
   initialSelectedStates,
+  initialSelectedStateId,
+  initialSelectedMetricIds,
   availableYears: initialAvailableYears,
   initialYearRange,
   initialNormalization,
-  initialSeries,
+  initialStateSeries,
+  initialMetricSeries,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>(initialMode);
   const [selectedMetricId, setSelectedMetricId] = useState(initialMetricId);
   const [selectedStateIds, setSelectedStateIds] = useState<string[]>(initialSelectedStates);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [normalization, setNormalization] = useState<"raw" | "indexed">(initialNormalization);
-  const [availableYears, setAvailableYears] = useState<number[]>(initialAvailableYears);
+  const [selectedStateId, setSelectedStateId] = useState(initialSelectedStateId);
+  const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>(initialSelectedMetricIds);
+  const [stateSearchTerm, setStateSearchTerm] = useState("");
+  const [singleStateSearchTerm, setSingleStateSearchTerm] = useState("");
+  const [normalization, setNormalization] = useState<NormalizationMode>(initialNormalization);
+  const [stateAvailableYears, setStateAvailableYears] = useState<number[]>(
+    initialMode === "states" ? initialAvailableYears : [],
+  );
+  const [metricAvailableYears, setMetricAvailableYears] = useState<number[]>(
+    initialMode === "metrics" ? initialAvailableYears : [],
+  );
   const [yearRange, setYearRange] = useState<{ start: number; end: number }>(initialYearRange);
-  const [series, setSeries] = useState<Series[]>(initialSeries);
+  const [stateSeries, setStateSeries] = useState<StateSeries[]>(initialStateSeries);
+  const [metricSeries, setMetricSeries] = useState<MetricSeries[]>(initialMetricSeries);
+  const [loadedStateMetricId, setLoadedStateMetricId] = useState<string | null>(
+    initialStateSeries.length ? initialMetricId : null,
+  );
+  const [loadedMetricKey, setLoadedMetricKey] = useState<string | null>(
+    initialMetricSeries.length ? buildLoadKey(initialSelectedStateId, initialSelectedMetricIds) : null,
+  );
   const [loading, setLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChartZoomed, setIsChartZoomed] = useState(false);
 
+  const selectedMetric = metrics.find((metric) => metric.id === selectedMetricId);
+  const selectedState = states.find((state) => state.id === selectedStateId);
+  const selectedMetricUnits = useMemo(() => {
+    return new Set(
+      selectedMetricIds
+        .map((metricId) => getMetricUnitKey(metrics.find((metric) => metric.id === metricId)))
+        .filter(Boolean),
+    );
+  }, [metrics, selectedMetricIds]);
+  const canUseRawMetricComparison = selectedMetricIds.length > 0 && selectedMetricUnits.size === 1;
+  const rawDisabled = comparisonMode === "metrics" && !canUseRawMetricComparison;
+  const effectiveNormalization: NormalizationMode = rawDisabled ? "indexed" : normalization;
+  const chartSeries = useMemo(() => {
+    if (comparisonMode === "states") {
+      return buildStateChartSeries(stateSeries, selectedStateIds, states, selectedMetric);
+    }
+
+    return buildMetricChartSeries(metricSeries, selectedMetricIds, metrics);
+  }, [comparisonMode, metricSeries, metrics, selectedMetric, selectedMetricIds, selectedStateIds, stateSeries, states]);
+  const chartData = useMemo(
+    () => normalizeSeriesForChart(chartSeries, yearRange, effectiveNormalization),
+    [chartSeries, effectiveNormalization, yearRange],
+  );
+  const yAxisUnit =
+    effectiveNormalization === "raw"
+      ? comparisonMode === "states"
+        ? selectedMetric?.unit
+        : metrics.find((metric) => metric.id === selectedMetricIds[0])?.unit
+      : null;
+  const availableYears = comparisonMode === "states" ? stateAvailableYears : metricAvailableYears;
+  const legendItems = chartSeries.map((item) => ({
+    id: item.id,
+    name: item.label,
+    color: item.color,
+  }));
+  const allStateIds = useMemo(() => states.map((state) => state.id), [states]);
+  const allStatesSelected = useMemo(() => {
+    if (allStateIds.length === 0) return false;
+    const selected = new Set(selectedStateIds);
+    return allStateIds.every((id) => selected.has(id));
+  }, [allStateIds, selectedStateIds]);
+  const filteredStates = useMemo(() => {
+    const term = stateSearchTerm.toLowerCase();
+    return states.filter(
+      (state) =>
+        state.name.toLowerCase().includes(term) ||
+        state.abbreviation.toLowerCase().includes(term) ||
+        state.id.includes(term),
+    );
+  }, [stateSearchTerm, states]);
+  const filteredSingleStates = useMemo(() => {
+    const term = singleStateSearchTerm.toLowerCase();
+    return states.filter(
+      (state) =>
+        state.name.toLowerCase().includes(term) ||
+        state.abbreviation.toLowerCase().includes(term) ||
+        state.id.includes(term),
+    );
+  }, [singleStateSearchTerm, states]);
+  const groupedMetrics = useMemo(() => {
+    return METRIC_GROUP_ORDER.map((group) => ({
+      group,
+      metrics: metrics.filter((metric) => getMetricGroup(metric.id) === group),
+    })).filter((group) => group.metrics.length > 0);
+  }, [metrics]);
+  const chartTitle =
+    comparisonMode === "states"
+      ? `State comparison${selectedMetric?.name ? `: ${selectedMetric.name}` : ""}`
+      : `${selectedState?.name ?? "Selected state"}: metric comparison`;
+  const chartSubtitle =
+    effectiveNormalization === "raw"
+      ? yAxisUnit
+        ? `Unit: ${yAxisUnit} · Raw values`
+        : "Raw values"
+      : "Indexed to start year";
+  const chartInstanceKey = [
+    comparisonMode,
+    selectedMetricId,
+    selectedStateId,
+    selectedStateIds.join(","),
+    selectedMetricIds.join(","),
+    effectiveNormalization,
+    yearRange.start,
+    yearRange.end,
+    chartData[0]?.year ?? "none",
+    chartData[chartData.length - 1]?.year ?? "none",
+  ].join("|");
+
   useEffect(() => {
-    // If metric changes, fetch fresh series data
+    if (!isUpdating) return;
+    const timeout = setTimeout(() => setIsUpdating(false), 250);
+    return () => clearTimeout(timeout);
+  }, [isUpdating]);
+
+  useEffect(() => {
+    if (availableYears.length === 0) return;
+    setYearRange((prev) => {
+      const start = availableYears.includes(prev.start) ? prev.start : availableYears[0];
+      const end = availableYears.includes(prev.end) ? prev.end : availableYears[availableYears.length - 1];
+      return start <= end
+        ? { start, end }
+        : { start: availableYears[0], end: availableYears[availableYears.length - 1] };
+    });
+  }, [availableYears]);
+
+  useEffect(() => {
+    if (comparisonMode !== "metrics") return;
+    if (normalization !== "indexed" && !canUseRawMetricComparison) {
+      setNormalization("indexed");
+    }
+  }, [canUseRawMetricComparison, comparisonMode, normalization]);
+
+  useEffect(() => {
+    if (comparisonMode !== "states") return;
+    if (!selectedMetricId || selectedMetricId === loadedStateMetricId) return;
+
     async function fetchMetricData(metricId: string) {
       setLoading(true);
       try {
         const res = await fetch(`/api/graph-data?metric=${encodeURIComponent(metricId)}`);
         if (!res.ok) throw new Error(`Failed to load metric data (${res.status})`);
-        const json: { availableYears: number[]; series: Series[] } = await res.json();
-        setAvailableYears(json.availableYears ?? []);
-        setSeries(json.series ?? []);
+        const json: StateGraphResponse = await res.json();
         const years = json.availableYears ?? [];
+        setStateAvailableYears(years);
+        setStateSeries(json.series ?? []);
+        setLoadedStateMetricId(metricId);
         if (years.length > 0) {
-          setYearRange({ start: years[0], end: years[years.length - 1] });
+          setYearRange(getYearRangeFromYears(years));
         }
       } catch (err) {
         console.error(err);
@@ -135,142 +365,300 @@ export function GraphExplorer({
       }
     }
 
-    if (selectedMetricId && selectedMetricId !== initialMetricId) {
-      fetchMetricData(selectedMetricId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMetricId]);
+    fetchMetricData(selectedMetricId);
+  }, [comparisonMode, loadedStateMetricId, selectedMetricId]);
 
   useEffect(() => {
-    // Ensure year range stays within available years when data updates
-    if (availableYears.length === 0) return;
-    setYearRange((prev) => {
-      const start = availableYears.includes(prev.start) ? prev.start : availableYears[0];
-      const end = availableYears.includes(prev.end) ? prev.end : availableYears[availableYears.length - 1];
-      return start <= end ? { start, end } : { start: availableYears[0], end: availableYears[availableYears.length - 1] };
-    });
-  }, [availableYears]);
+    if (comparisonMode !== "metrics") return;
+    if (selectedMetricIds.length === 0) {
+      setMetricSeries([]);
+      setMetricAvailableYears([]);
+      setLoadedMetricKey(null);
+      return;
+    }
 
-  const filteredStates = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return states.filter(
-      (state) =>
-        state.name.toLowerCase().includes(term) ||
-        state.abbreviation.toLowerCase().includes(term) ||
-        state.id.includes(term),
-    );
-  }, [searchTerm, states]);
+    const nextLoadKey = buildLoadKey(selectedStateId, selectedMetricIds);
+    if (nextLoadKey === loadedMetricKey) return;
 
-  const allStateIds = useMemo(() => states.map((state) => state.id), [states]);
-  const allStatesSelected = useMemo(() => {
-    if (allStateIds.length === 0) return false;
-    const selected = new Set(selectedStateIds);
-    return allStateIds.every((id) => selected.has(id));
-  }, [allStateIds, selectedStateIds]);
+    async function fetchMetricComparisonData() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          mode: "metrics",
+          state: selectedStateId,
+          metrics: selectedMetricIds.join(","),
+        });
+        const res = await fetch(`/api/graph-data?${params.toString()}`);
+        if (!res.ok) throw new Error(`Failed to load metric comparison data (${res.status})`);
+        const json: MetricGraphResponse = await res.json();
+        const years = json.availableYears ?? [];
+        setMetricAvailableYears(years);
+        setMetricSeries(json.series ?? []);
+        setLoadedMetricKey(nextLoadKey);
+        if (years.length > 0) {
+          setYearRange(getYearRangeFromYears(years));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchMetricComparisonData();
+  }, [comparisonMode, loadedMetricKey, selectedMetricIds, selectedStateId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("mode", comparisonMode);
+    params.set("normalization", effectiveNormalization);
+    params.set("startYear", String(yearRange.start));
+    params.set("endYear", String(yearRange.end));
+
+    if (comparisonMode === "states") {
+      params.set("metric", selectedMetricId);
+      params.set(
+        "states",
+        selectedStateIds
+          .map((stateId) => states.find((state) => state.id === stateId)?.abbreviation ?? stateId)
+          .join(","),
+      );
+    } else {
+      params.set("state", states.find((state) => state.id === selectedStateId)?.abbreviation ?? selectedStateId);
+      params.set("metrics", selectedMetricIds.join(","));
+    }
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [
+    comparisonMode,
+    effectiveNormalization,
+    pathname,
+    router,
+    selectedMetricId,
+    selectedMetricIds,
+    selectedStateId,
+    selectedStateIds,
+    states,
+    yearRange.end,
+    yearRange.start,
+  ]);
+
+  const setMode = (nextMode: ComparisonMode) => {
+    setComparisonMode(nextMode);
+    setIsChartZoomed(false);
+    if (nextMode === "metrics") {
+      setNormalization("indexed");
+    }
+  };
 
   const toggleSelectAllStates = () => {
     setIsUpdating(true);
     setSelectedStateIds(allStatesSelected ? [] : allStateIds);
   };
 
-  useEffect(() => {
-    if (!isUpdating) return;
-    const timeout = setTimeout(() => setIsUpdating(false), 250);
-    return () => clearTimeout(timeout);
-  }, [isUpdating]);
+  const toggleMetric = (metricId: string, checked: boolean) => {
+    setIsUpdating(true);
+    setSelectedMetricIds((prev) => {
+      if (checked) {
+        return Array.from(new Set([...prev, metricId]));
+      }
+      return prev.filter((id) => id !== metricId);
+    });
+  };
 
-  const chartData = useMemo(
-    () => normalizeSeries(series, selectedStateIds, yearRange, normalization),
-    [series, selectedStateIds, yearRange, normalization],
+  const setYearRangeStart = (next: number) => {
+    setIsUpdating(true);
+    setYearRange((prev) => ({
+      start: Math.min(next, prev.end),
+      end: prev.end,
+    }));
+  };
+
+  const setYearRangeEnd = (next: number) => {
+    setIsUpdating(true);
+    setYearRange((prev) => ({
+      start: prev.start,
+      end: Math.max(next, prev.start),
+    }));
+  };
+
+  const renderModeToggle = () => (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-slate-700">Comparison</p>
+      <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-slate-100 p-1 text-left text-xs">
+        {([
+          { id: "states", label: "Compare States", description: "One metric across multiple states." },
+          { id: "metrics", label: "Compare Metrics", description: "One state across multiple metrics." },
+        ] as const).map((mode) => {
+          const active = comparisonMode === mode.id;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => setMode(mode.id)}
+              aria-pressed={active}
+              className={`rounded-lg px-2.5 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+                active ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span className="block text-[12px] font-semibold">{mode.label}</span>
+              <span className="mt-0.5 block text-[10px] leading-tight text-slate-500">{mode.description}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
-
-  const legendItems = selectedStateIds
-    .map((id) => {
-      const state = states.find((s) => s.id === id);
-      return { id, name: state?.name ?? id, color: getStateSeriesColor(id) };
-    })
-    .filter(Boolean);
-
-  const selectedMetric = metrics.find((m) => m.id === selectedMetricId);
-  const chartInstanceKey = [
-    selectedMetricId,
-    normalization,
-    yearRange.start,
-    yearRange.end,
-    selectedStateIds.join(","),
-    chartData[0]?.year ?? "none",
-    chartData[chartData.length - 1]?.year ?? "none",
-  ].join("|");
 
   return (
     <div className="grid h-full min-h-full gap-4 lg:grid-cols-[320px_1fr]">
       <div className="h-auto min-h-fit space-y-5 overflow-visible rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:space-y-4 md:rounded-2xl md:p-4">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Controls</p>
-          <h2 className="text-lg font-semibold text-slate-900">Metric & States</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {comparisonMode === "states" ? "Metric & States" : "State & Metrics"}
+          </h2>
         </div>
 
-        <div className="space-y-2">
-          <MetricSelect
-            metrics={metrics}
-            value={selectedMetricId}
-            onChange={setSelectedMetricId}
-            className="w-full"
-          />
-          {selectedMetric?.description ? (
-            <p className="text-xs text-slate-500">{selectedMetric.description}</p>
-          ) : null}
-        </div>
+        {renderModeToggle()}
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-slate-700" htmlFor="state-filter">
-              States
-            </label>
-            <button
-              type="button"
-              onClick={toggleSelectAllStates}
-              className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
-              aria-pressed={allStatesSelected}
-            >
-              {allStatesSelected ? "Clear all" : "Select all"}
-            </button>
-            <span className="text-xs text-slate-500">{selectedStateIds.length} selected</span>
-          </div>
-          <input
-            id="state-filter"
-            type="text"
-            placeholder="Search states"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-slate-400 focus:outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <div className="max-h-[320px] space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2 md:max-h-56" role="listbox" aria-label="Select states">
-            {filteredStates.map((state) => {
-              const checked = selectedStateIds.includes(state.id);
-              return (
-                <label key={state.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-white">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => {
-                      setIsUpdating(true);
-                      if (e.target.checked) {
-                        setSelectedStateIds((prev) => Array.from(new Set([...prev, state.id])));
-                      } else {
-                        setSelectedStateIds((prev) => prev.filter((id) => id !== state.id));
-                      }
-                    }}
-                    className="accent-slate-700"
-                  />
-                  <span className="text-sm text-slate-800">
-                    {state.name} ({state.abbreviation})
-                  </span>
+        {comparisonMode === "states" ? (
+          <>
+            <div className="space-y-2">
+              <MetricSelect metrics={metrics} value={selectedMetricId} onChange={setSelectedMetricId} className="w-full" />
+              {selectedMetric?.description ? (
+                <p className="text-xs text-slate-500">{selectedMetric.description}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium text-slate-700" htmlFor="state-filter">
+                  States
                 </label>
-              );
-            })}
-          </div>
-        </div>
+                <button
+                  type="button"
+                  onClick={toggleSelectAllStates}
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+                  aria-pressed={allStatesSelected}
+                >
+                  {allStatesSelected ? "Clear all" : "Select all"}
+                </button>
+                <span className="text-xs text-slate-500">{selectedStateIds.length} selected</span>
+              </div>
+              <input
+                id="state-filter"
+                type="text"
+                placeholder="Search states"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-slate-400 focus:outline-none"
+                value={stateSearchTerm}
+                onChange={(event) => setStateSearchTerm(event.target.value)}
+              />
+              <div className="max-h-[320px] space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2 md:max-h-56" role="listbox" aria-label="Select states">
+                {filteredStates.map((state) => {
+                  const checked = selectedStateIds.includes(state.id);
+                  return (
+                    <label key={state.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 hover:bg-white">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          setIsUpdating(true);
+                          if (event.target.checked) {
+                            setSelectedStateIds((prev) => Array.from(new Set([...prev, state.id])));
+                          } else {
+                            setSelectedStateIds((prev) => prev.filter((id) => id !== state.id));
+                          }
+                        }}
+                        className="accent-slate-700"
+                      />
+                      <span className="text-sm text-slate-800">
+                        {state.name} ({state.abbreviation})
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700" htmlFor="single-state-filter">
+                State
+              </label>
+              <input
+                id="single-state-filter"
+                type="text"
+                placeholder="Search states"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-inner focus:border-slate-400 focus:outline-none"
+                value={singleStateSearchTerm}
+                onChange={(event) => setSingleStateSearchTerm(event.target.value)}
+              />
+              <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2" role="listbox" aria-label="Select one state">
+                {filteredSingleStates.map((state) => {
+                  const checked = selectedStateId === state.id;
+                  return (
+                    <button
+                      key={state.id}
+                      type="button"
+                      role="option"
+                      aria-selected={checked}
+                      onClick={() => {
+                        setSelectedStateId(state.id);
+                        setIsUpdating(true);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition ${
+                        checked ? "bg-white font-semibold text-slate-950 shadow-sm" : "text-slate-800 hover:bg-white"
+                      }`}
+                    >
+                      <span>
+                        {state.name} ({state.abbreviation})
+                      </span>
+                      {checked ? <span className="h-2 w-2 rounded-full bg-slate-800" aria-hidden /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-700">Metrics</p>
+                <span className="text-xs text-slate-500">{selectedMetricIds.length} selected</span>
+              </div>
+              <div className="max-h-[320px] space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2 md:max-h-60" role="group" aria-label="Select metrics">
+                {groupedMetrics.map((group) => (
+                  <div key={group.group} className="space-y-1">
+                    <p className="px-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      {group.group}
+                    </p>
+                    {group.metrics.map((metric) => {
+                      const checked = selectedMetricIds.includes(metric.id);
+                      return (
+                        <label key={metric.id} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) => toggleMetric(metric.id, event.target.checked)}
+                            className="accent-slate-700"
+                          />
+                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600">
+                            {getMetricIcon(metric.id, "h-4 w-4")}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm text-slate-800">{metric.name}</span>
+                            <span className="block text-xs text-slate-500">{metric.unit ?? "Unit n/a"}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="space-y-3">
           <p className="text-sm font-medium text-slate-700">Year range</p>
@@ -281,38 +669,26 @@ export function GraphExplorer({
               min={availableYears[0] ?? 0}
               max={availableYears[availableYears.length - 1] ?? 0}
               value={yearRange.start}
-              onChange={(e) => {
-                setIsUpdating(true);
-                const next = Number(e.target.value);
-                setYearRange((prev) => ({
-                  start: Math.min(next, prev.end),
-                  end: prev.end,
-                }));
-              }}
+              onChange={(event) => setYearRangeStart(Number(event.target.value))}
               className="w-full accent-slate-700"
               step={1}
               aria-label="Start year"
               onMouseUp={() => setIsUpdating(true)}
               onTouchEnd={() => setIsUpdating(true)}
+              disabled={!availableYears.length}
             />
             <input
               type="range"
               min={availableYears[0] ?? 0}
               max={availableYears[availableYears.length - 1] ?? 0}
               value={yearRange.end}
-              onChange={(e) => {
-                setIsUpdating(true);
-                const next = Number(e.target.value);
-                setYearRange((prev) => ({
-                  start: prev.start,
-                  end: Math.max(next, prev.start),
-                }));
-              }}
+              onChange={(event) => setYearRangeEnd(Number(event.target.value))}
               className="w-full accent-slate-700"
               step={1}
               aria-label="End year"
               onMouseUp={() => setIsUpdating(true)}
               onTouchEnd={() => setIsUpdating(true)}
+              disabled={!availableYears.length}
             />
             <span>{availableYears[availableYears.length - 1] ?? "–"}</span>
           </div>
@@ -325,20 +701,35 @@ export function GraphExplorer({
         <div className="space-y-2">
           <p className="text-sm font-medium text-slate-700">Normalization</p>
           <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1 text-sm">
-            {(["raw", "indexed"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setNormalization(mode)}
-                aria-pressed={normalization === mode}
-                className={`rounded-md px-3 py-1 font-medium transition ${
-                  normalization === mode ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-800"
-                }`}
-              >
-                {mode === "raw" ? "Raw values" : "Indexed (100 = start)"}
-              </button>
-            ))}
+            {(["raw", "indexed"] as const).map((mode) => {
+              const disabled = mode === "raw" && rawDisabled;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    if (disabled) return;
+                    setNormalization(mode);
+                  }}
+                  aria-pressed={effectiveNormalization === mode}
+                  disabled={disabled}
+                  title={disabled ? "Raw values are disabled when comparing metrics with different units." : undefined}
+                  className={`rounded-md px-3 py-1 font-medium transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                    effectiveNormalization === mode
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-800"
+                  }`}
+                >
+                  {mode === "raw" ? "Raw values" : "Indexed (100 = start)"}
+                </button>
+              );
+            })}
           </div>
+          {rawDisabled ? (
+            <p className="text-xs leading-relaxed text-slate-500">
+              Raw values are disabled when comparing metrics with different units.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -346,43 +737,41 @@ export function GraphExplorer({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Chart</p>
-            <h2 className="text-[26px] font-semibold leading-tight text-slate-900 md:text-xl">
-              State comparison{selectedMetric?.name ? `: ${selectedMetric.name}` : ""}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {selectedMetric?.unit ? `Unit: ${selectedMetric.unit}` : "Unit: n/a"} ·{" "}
-              {normalization === "raw" ? "Raw values" : "Indexed to start year"}
-            </p>
+            <h2 className="text-[26px] font-semibold leading-tight text-slate-900 md:text-xl">{chartTitle}</h2>
+            <p className="text-xs text-slate-500">{chartSubtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 md:justify-end" aria-live="polite">
-            {!isChartZoomed && selectedStateIds.length > 0 && chartData.length > 0 ? (
+            {!isChartZoomed && chartSeries.length > 0 && chartData.length > 0 ? (
               <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm sm:inline-flex">
                 <MousePointer2 className="h-3.5 w-3.5" aria-hidden />
                 <span>Scroll to zoom</span>
               </span>
             ) : null}
-            {loading ? <span>Loading metric data…</span> : null}
+            {loading ? <span>Loading data…</span> : null}
             {isUpdating && !loading ? <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">Updating…</span> : null}
           </div>
         </div>
 
-        {selectedStateIds.length === 0 ? (
+        {chartSeries.length === 0 ? (
           <div className="mt-6 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600">
-            Select at least one state to view the chart.
+            {loading
+              ? "Loading chart data..."
+              : comparisonMode === "states"
+                ? "Select at least one state to view the chart."
+                : "Select at least one metric to view the chart."}
           </div>
         ) : chartData.length === 0 ? (
           <div className="mt-6 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600">
-            No data available for this metric.
+            No data available for this comparison.
           </div>
         ) : (
           <div className="mt-3 h-[400px] w-full min-w-0 sm:h-[430px] md:mt-4 md:h-[420px]">
             <ChartContainer
               key={chartInstanceKey}
               chartData={chartData}
-              selectedStateIds={selectedStateIds}
-              states={states}
-              metricUnit={selectedMetric?.unit}
-              normalization={normalization}
+              series={chartSeries}
+              yAxisUnit={yAxisUnit}
+              normalization={effectiveNormalization}
               onZoomChange={setIsChartZoomed}
             />
           </div>

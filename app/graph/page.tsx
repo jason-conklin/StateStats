@@ -7,6 +7,11 @@ import { ensureCatalog } from "@/lib/metrics";
 type QueryParams = { [key: string]: string | string[] | undefined };
 
 const DEFAULT_STATE_ABBRS = ["CA", "TX", "NY", "FL"];
+const DEFAULT_METRIC_COMPARISON_IDS = [
+  "median_household_income",
+  "median_home_value",
+  "unemployment_rate",
+];
 const graphStateList = stateList.filter((state) => state.id !== "11");
 
 export const metadata: Metadata = {
@@ -32,6 +37,28 @@ function normalizeStateIds(param: string | string[] | undefined) {
     .filter(Boolean) as string[];
 
   return Array.from(new Set(ids));
+}
+
+function normalizeMetricIds(param: string | string[] | undefined, availableMetricIds: Set<string>) {
+  const values = Array.isArray(param) ? param.join(",") : param ?? "";
+  const ids = values
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => availableMetricIds.has(id));
+
+  return Array.from(new Set(ids));
+}
+
+function normalizeSingleStateId(param: string | string[] | undefined) {
+  const raw = Array.isArray(param) ? param[0] : param;
+  const code = raw?.trim().toUpperCase();
+  if (!code) return null;
+
+  const match =
+    graphStateList.find((state) => state.abbreviation.toUpperCase() === code) ??
+    graphStateList.find((state) => state.id === code);
+
+  return match?.id ?? null;
 }
 
 async function loadMetricData(metricId: string) {
@@ -82,6 +109,45 @@ async function loadMetricData(metricId: string) {
   };
 }
 
+async function loadMetricComparisonData(stateId: string, metricIds: string[]) {
+  const selectedMetrics = await prisma.metric.findMany({
+    where: { id: { in: metricIds } },
+    orderBy: { name: "asc" },
+  });
+  const metricOrder = new Map(metricIds.map((metricId, index) => [metricId, index]));
+  const orderedMetrics = selectedMetrics.sort(
+    (left, right) => (metricOrder.get(left.id) ?? 0) - (metricOrder.get(right.id) ?? 0),
+  );
+
+  const observations = await prisma.observation.findMany({
+    where: {
+      stateId,
+      metricId: { in: metricIds },
+    },
+    select: { metricId: true, year: true, value: true },
+    orderBy: [{ year: "asc" }],
+  });
+
+  const years = Array.from(new Set(observations.map((observation) => observation.year))).sort((a, b) => a - b);
+  const observationsByMetricId = new Map<string, { year: number; value: number | null }[]>();
+
+  observations.forEach((observation) => {
+    const metricObservations = observationsByMetricId.get(observation.metricId) ?? [];
+    metricObservations.push({ year: observation.year, value: observation.value });
+    observationsByMetricId.set(observation.metricId, metricObservations);
+  });
+
+  return {
+    availableYears: years,
+    series: orderedMetrics.map((metric) => ({
+      metricId: metric.id,
+      metricName: metric.name,
+      unit: metric.unit,
+      points: observationsByMetricId.get(metric.id) ?? [],
+    })),
+  };
+}
+
 type GraphPageProps = { searchParams?: Promise<QueryParams> | QueryParams };
 
 export const dynamic = "force-dynamic";
@@ -94,6 +160,10 @@ export default async function GraphPage(props: GraphPageProps) {
     await ensureCatalog(prisma);
 
     const metrics = await prisma.metric.findMany({ orderBy: { name: "asc" } });
+    const availableMetricIds = new Set(metrics.map((metric) => metric.id));
+    const modeRaw = params.mode;
+    const modeParam = Array.isArray(modeRaw) ? modeRaw[0] : modeRaw;
+    const comparisonMode = modeParam === "metrics" ? "metrics" : "states";
     const fallbackMetricId =
       metrics.find((m) => m.id === "median_household_income")?.id ??
       metrics.find((m) => m.isDefault)?.id ??
@@ -106,17 +176,11 @@ export default async function GraphPage(props: GraphPageProps) {
     if (!selectedMetricId) {
       return (
         <section className="space-y-4">
-          <h1 className="text-2xl font-semibold text-slate-900">Compare states over time</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Compare trends over time</h1>
           <p className="text-slate-600">No metrics are available. Please ingest data first.</p>
         </section>
       );
     }
-
-    const metricData = await loadMetricData(selectedMetricId);
-
-    const availableYears = metricData?.availableYears ?? [];
-    const defaultStart = availableYears[0] ?? new Date().getFullYear();
-    const defaultEnd = availableYears[availableYears.length - 1] ?? defaultStart;
 
     const statesRaw = params.states;
     const statesParam = Array.isArray(statesRaw) ? statesRaw.join(",") : statesRaw;
@@ -125,6 +189,27 @@ export default async function GraphPage(props: GraphPageProps) {
       (abbr) => graphStateList.find((s) => s.abbreviation === abbr)?.id,
     ).filter(Boolean) as string[];
     const selectedStates = requestedStates.length > 0 ? requestedStates : defaultStates;
+    const stateRaw = params.state;
+    const selectedStateId =
+      normalizeSingleStateId(stateRaw) ??
+      selectedStates[0] ??
+      graphStateList.find((state) => state.abbreviation === "CA")?.id ??
+      graphStateList[0]?.id;
+    const requestedMetricIds = normalizeMetricIds(params.metrics, availableMetricIds);
+    const defaultMetricIds = DEFAULT_METRIC_COMPARISON_IDS.filter((metricId) => availableMetricIds.has(metricId));
+    const selectedMetricIds = requestedMetricIds.length > 0 ? requestedMetricIds : defaultMetricIds;
+    const metricData = comparisonMode === "states" ? await loadMetricData(selectedMetricId) : null;
+    const metricComparisonData =
+      comparisonMode === "metrics" && selectedStateId
+        ? await loadMetricComparisonData(selectedStateId, selectedMetricIds)
+        : null;
+
+    const availableYears =
+      comparisonMode === "metrics"
+        ? metricComparisonData?.availableYears ?? []
+        : metricData?.availableYears ?? [];
+    const defaultStart = availableYears[0] ?? new Date().getFullYear();
+    const defaultEnd = availableYears[availableYears.length - 1] ?? defaultStart;
 
     const startYearRaw = params.startYear;
     const endYearRaw = params.endYear;
@@ -133,14 +218,21 @@ export default async function GraphPage(props: GraphPageProps) {
     const startYearParam = startYearParamRaw ? Number(startYearParamRaw) : undefined;
     const endYearParam = endYearParamRaw ? Number(endYearParamRaw) : undefined;
 
-    const startYear =
-      startYearParam && availableYears.includes(startYearParam) ? startYearParam : defaultStart;
-    const endYear =
-      endYearParam && availableYears.includes(endYearParam) ? endYearParam : defaultEnd;
+    const startYear = startYearParam && availableYears.includes(startYearParam) ? startYearParam : defaultStart;
+    const endYear = endYearParam && availableYears.includes(endYearParam) ? endYearParam : defaultEnd;
 
-    const modeRaw = params.mode;
-    const modeParam = Array.isArray(modeRaw) ? modeRaw[0] : modeRaw;
-    const normalization = modeParam === "indexed" ? "indexed" : "raw";
+    const normalizationRaw = params.normalization;
+    const normalizationParam = Array.isArray(normalizationRaw) ? normalizationRaw[0] : normalizationRaw;
+    const requestedNormalization =
+      normalizationParam === "indexed" || normalizationParam === "raw" ? normalizationParam : null;
+    const legacyNormalization = modeParam === "indexed" ? "indexed" : modeParam === "raw" ? "raw" : null;
+    const normalizationPreference = requestedNormalization ?? legacyNormalization;
+    const normalization =
+      comparisonMode === "metrics"
+        ? normalizationPreference ?? "indexed"
+        : normalizationPreference === "indexed"
+          ? "indexed"
+          : "raw";
 
     return (
       <div className="min-h-[100svh] w-full overflow-y-auto bg-sky-50 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:h-full md:min-h-0 md:bg-slate-950 md:bg-opacity-90 md:p-6">
@@ -150,11 +242,10 @@ export default async function GraphPage(props: GraphPageProps) {
               Compare
             </p>
             <h1 className="text-2xl md:text-3xl font-semibold leading-tight text-slate-900 md:text-white">
-              Compare states over time
+              Compare trends over time
             </h1>
             <p className="text-slate-700 md:text-slate-300">
-              Select a metric, pick states, and explore trends across years. Use indexed mode to
-              compare relative changes.
+              Compare states across one metric, or compare multiple metrics for a single state.
             </p>
           </div>
           <div className="h-auto overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-md md:min-h-[calc(100vh-13rem)] md:overflow-visible md:border-slate-700 md:bg-slate-900 md:shadow-lg xl:min-h-[calc(100vh-12rem)]">
@@ -167,12 +258,16 @@ export default async function GraphPage(props: GraphPageProps) {
                 description: m.description,
               }))}
               states={graphStateList}
+              initialMode={comparisonMode}
               initialMetricId={selectedMetricId}
               initialSelectedStates={selectedStates}
+              initialSelectedStateId={selectedStateId ?? graphStateList[0]?.id ?? ""}
+              initialSelectedMetricIds={selectedMetricIds}
               availableYears={availableYears}
               initialYearRange={{ start: startYear, end: endYear }}
               initialNormalization={normalization === "indexed" ? "indexed" : "raw"}
-              initialSeries={metricData?.series ?? []}
+              initialStateSeries={metricData?.series ?? []}
+              initialMetricSeries={metricComparisonData?.series ?? []}
             />
           </div>
         </section>
@@ -183,7 +278,7 @@ export default async function GraphPage(props: GraphPageProps) {
     return (
       <div className="h-full w-full overflow-y-auto p-6">
         <section className="space-y-4">
-          <h1 className="text-2xl font-semibold text-slate-900">Compare states over time</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Compare trends over time</h1>
           <p className="text-slate-600">Unable to load data for this view. Please try again later.</p>
         </section>
       </div>

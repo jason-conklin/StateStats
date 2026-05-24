@@ -48,3 +48,14 @@ export function getStateSeriesStyle(stateId: string) {
 export function getStateSeriesColor(stateId: string) {
   return getStateSeriesStyle(stateId).color;
 }
+
+export function getMetricSeriesStyle(metricId: string, index = 0) {
+  const hash = hashStateKey(metricId);
+  const stableIndex = (hash + index * 7) % TOTAL_COLOR_SLOTS;
+  const dashPatternIndex = Math.floor((hash + index) / TOTAL_COLOR_SLOTS);
+
+  return {
+    color: getColorFromSlot(stableIndex),
+    dashArray: DASH_PATTERNS[dashPatternIndex % DASH_PATTERNS.length],
+  };
+}
