@@ -16,6 +16,13 @@ export type ChartSeries = {
   points: SeriesPoint[];
 };
 
+export type SeriesStyle = {
+  color?: string;
+  strokeDasharray?: string;
+};
+
+export type SeriesStyleMap = Record<string, SeriesStyle>;
+
 export type ChartDataRow = {
   year: number;
   [seriesKey: string]: number | null;

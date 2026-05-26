@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { MousePointer2 } from "lucide-react";
@@ -12,7 +12,17 @@ import {
   type MetricOption as SharedMetricOption,
 } from "@/components/controls/MetricSelect";
 import { StateInfo } from "@/lib/types";
-import { ChartDataRow, ChartSeries, ComparisonMode, NormalizationMode, SeriesPoint, getRawValueKey } from "./chartTypes";
+import {
+  ChartDataRow,
+  ChartSeries,
+  ComparisonMode,
+  NormalizationMode,
+  SeriesPoint,
+  SeriesStyle,
+  SeriesStyleMap,
+  getRawValueKey,
+} from "./chartTypes";
+import { SeriesStylePopover, type PopoverAnchorRect } from "./SeriesStylePopover";
 import { getMetricSeriesStyle, getStateSeriesStyle } from "./seriesStyle";
 
 type MetricOption = SharedMetricOption & {
@@ -66,6 +76,12 @@ type MetricGraphResponse = {
 };
 
 const METRIC_GROUP_ORDER: MetricGroup[] = ["Money", "People", "Weather", "Other"];
+const SERIES_STYLE_STORAGE_KEY = "statestats.chartSeriesStyles.v1";
+const EMPTY_STYLE_MAPS: Record<ComparisonMode, SeriesStyleMap> = {
+  states: {},
+  metrics: {},
+};
+const EMPTY_STYLE_MAP: SeriesStyleMap = {};
 
 const ChartContainer = dynamic<ChartContainerProps>(
   () => import("./GraphInner").then((mod) => mod.default),
@@ -186,6 +202,77 @@ function getMetricUnitKey(metric: MetricOption | undefined) {
   return metric?.unit?.trim().toLowerCase() ?? "";
 }
 
+function sanitizeStyleMap(value: unknown): SeriesStyleMap {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.entries(value as Record<string, unknown>).reduce<SeriesStyleMap>((acc, [seriesId, style]) => {
+    if (!style || typeof style !== "object" || Array.isArray(style)) {
+      return acc;
+    }
+
+    const styleRecord = style as Record<string, unknown>;
+    const nextStyle: SeriesStyle = {};
+    if (typeof styleRecord.color === "string") {
+      nextStyle.color = styleRecord.color;
+    }
+    if (typeof styleRecord.strokeDasharray === "string") {
+      nextStyle.strokeDasharray = styleRecord.strokeDasharray;
+    }
+    if (nextStyle.color !== undefined || nextStyle.strokeDasharray !== undefined) {
+      acc[seriesId] = nextStyle;
+    }
+    return acc;
+  }, {});
+}
+
+function readStoredStyleMaps(): Record<ComparisonMode, SeriesStyleMap> {
+  if (typeof window === "undefined") {
+    return EMPTY_STYLE_MAPS;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(SERIES_STYLE_STORAGE_KEY);
+    if (!rawValue) {
+      return EMPTY_STYLE_MAPS;
+    }
+    const parsed = JSON.parse(rawValue) as Record<string, unknown>;
+    return {
+      states: sanitizeStyleMap(parsed.states),
+      metrics: sanitizeStyleMap(parsed.metrics),
+    };
+  } catch {
+    return EMPTY_STYLE_MAPS;
+  }
+}
+
+function applyStyleMap(series: ChartSeries[], styleMap: SeriesStyleMap): ChartSeries[] {
+  return series.map((item) => {
+    const style = styleMap[item.id];
+    if (!style) {
+      return item;
+    }
+
+    return {
+      ...item,
+      color: style.color ?? item.color,
+      dashArray: style.strokeDasharray ?? item.dashArray,
+    };
+  });
+}
+
+function getAnchorRect(element: HTMLElement): PopoverAnchorRect {
+  const rect = element.getBoundingClientRect();
+  return {
+    bottom: rect.bottom,
+    height: rect.height,
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+  };
+}
+
 export function GraphExplorer({
   metrics,
   states,
@@ -228,6 +315,13 @@ export function GraphExplorer({
   const [loading, setLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChartZoomed, setIsChartZoomed] = useState(false);
+  const [seriesStyleMaps, setSeriesStyleMaps] =
+    useState<Record<ComparisonMode, SeriesStyleMap>>(EMPTY_STYLE_MAPS);
+  const [seriesStylesHydrated, setSeriesStylesHydrated] = useState(false);
+  const [activeStyleEditor, setActiveStyleEditor] = useState<{
+    anchorRect: PopoverAnchorRect;
+    seriesId: string;
+  } | null>(null);
 
   const selectedMetric = metrics.find((metric) => metric.id === selectedMetricId);
   const selectedState = states.find((state) => state.id === selectedStateId);
@@ -248,6 +342,14 @@ export function GraphExplorer({
 
     return buildMetricChartSeries(metricSeries, selectedMetricIds, metrics);
   }, [comparisonMode, metricSeries, metrics, selectedMetric, selectedMetricIds, selectedStateIds, stateSeries, states]);
+  const currentStyleMap = useMemo(
+    () => seriesStyleMaps[comparisonMode] ?? EMPTY_STYLE_MAP,
+    [comparisonMode, seriesStyleMaps],
+  );
+  const styledChartSeries = useMemo(
+    () => applyStyleMap(chartSeries, currentStyleMap),
+    [chartSeries, currentStyleMap],
+  );
   const chartData = useMemo(
     () => normalizeSeriesForChart(chartSeries, yearRange, effectiveNormalization),
     [chartSeries, effectiveNormalization, yearRange],
@@ -259,11 +361,17 @@ export function GraphExplorer({
         : metrics.find((metric) => metric.id === selectedMetricIds[0])?.unit
       : null;
   const availableYears = comparisonMode === "states" ? stateAvailableYears : metricAvailableYears;
-  const legendItems = chartSeries.map((item) => ({
+  const legendItems = styledChartSeries.map((item) => ({
+    dashArray: item.dashArray,
     id: item.id,
     name: item.label,
     color: item.color,
   }));
+  const activeStyleSeries = activeStyleEditor
+    ? styledChartSeries.find((item) => item.id === activeStyleEditor.seriesId) ?? null
+    : null;
+  const activeSeriesStyle = activeStyleEditor ? currentStyleMap[activeStyleEditor.seriesId] ?? {} : {};
+  const hasActiveSeriesStyle = activeStyleEditor ? Boolean(currentStyleMap[activeStyleEditor.seriesId]) : false;
   const allStateIds = useMemo(() => states.map((state) => state.id), [states]);
   const allStatesSelected = useMemo(() => {
     if (allStateIds.length === 0) return false;
@@ -322,6 +430,32 @@ export function GraphExplorer({
     const timeout = setTimeout(() => setIsUpdating(false), 250);
     return () => clearTimeout(timeout);
   }, [isUpdating]);
+
+  useEffect(() => {
+    setSeriesStyleMaps(readStoredStyleMaps());
+    setSeriesStylesHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!seriesStylesHydrated || typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(SERIES_STYLE_STORAGE_KEY, JSON.stringify(seriesStyleMaps));
+    } catch {
+      // localStorage can be unavailable in private or restricted browsing contexts.
+    }
+  }, [seriesStyleMaps, seriesStylesHydrated]);
+
+  useEffect(() => {
+    setActiveStyleEditor(null);
+  }, [comparisonMode]);
+
+  useEffect(() => {
+    if (!activeStyleEditor) return;
+    if (!styledChartSeries.some((item) => item.id === activeStyleEditor.seriesId)) {
+      setActiveStyleEditor(null);
+    }
+  }, [activeStyleEditor, styledChartSeries]);
 
   useEffect(() => {
     if (availableYears.length === 0) return;
@@ -480,6 +614,60 @@ export function GraphExplorer({
       start: prev.start,
       end: Math.max(next, prev.start),
     }));
+  };
+
+  const updateSeriesStyle = useCallback(
+    (seriesId: string, patch: SeriesStyle) => {
+      setSeriesStyleMaps((prev) => {
+        const modeStyleMap = prev[comparisonMode] ?? {};
+        const currentStyle = modeStyleMap[seriesId] ?? {};
+        const nextStyle: SeriesStyle = {
+          ...currentStyle,
+          ...patch,
+        };
+
+        return {
+          ...prev,
+          [comparisonMode]: {
+            ...modeStyleMap,
+            [seriesId]: nextStyle,
+          },
+        };
+      });
+    },
+    [comparisonMode],
+  );
+
+  const resetSeriesStyle = useCallback(
+    (seriesId: string) => {
+      setSeriesStyleMaps((prev) => {
+        const modeStyleMap = prev[comparisonMode] ?? {};
+        if (!modeStyleMap[seriesId]) {
+          return prev;
+        }
+
+        const nextModeStyleMap = { ...modeStyleMap };
+        delete nextModeStyleMap[seriesId];
+        return {
+          ...prev,
+          [comparisonMode]: nextModeStyleMap,
+        };
+      });
+    },
+    [comparisonMode],
+  );
+
+  const openSeriesStyleEditor = (seriesId: string, triggerElement: HTMLElement) => {
+    setActiveStyleEditor((prev) => {
+      if (prev?.seriesId === seriesId) {
+        return null;
+      }
+
+      return {
+        anchorRect: getAnchorRect(triggerElement),
+        seriesId,
+      };
+    });
   };
 
   const renderModeToggle = () => (
@@ -769,7 +957,7 @@ export function GraphExplorer({
             <ChartContainer
               key={chartInstanceKey}
               chartData={chartData}
-              series={chartSeries}
+              series={styledChartSeries}
               yAxisUnit={yAxisUnit}
               normalization={effectiveNormalization}
               onZoomChange={setIsChartZoomed}
@@ -780,12 +968,47 @@ export function GraphExplorer({
         {legendItems.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-700">
             {legendItems.map((item) => (
-              <span key={item.id} className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} aria-hidden />
+              <button
+                key={item.id}
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={activeStyleEditor?.seriesId === item.id}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => openSeriesStyleEditor(item.id, event.currentTarget)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+                  activeStyleEditor?.seriesId === item.id
+                    ? "border-slate-400 bg-slate-100 text-slate-950"
+                    : "border-transparent bg-slate-50 hover:border-slate-200 hover:bg-white hover:text-slate-950"
+                }`}
+              >
+                <svg className="h-3.5 w-8 shrink-0" viewBox="0 0 32 14" aria-hidden>
+                  <line
+                    x1="2"
+                    y1="7"
+                    x2="30"
+                    y2="7"
+                    stroke={item.color}
+                    strokeDasharray={item.dashArray || undefined}
+                    strokeLinecap="round"
+                    strokeWidth="3"
+                  />
+                </svg>
                 <span>{item.name}</span>
-              </span>
+              </button>
             ))}
           </div>
+        ) : null}
+
+        {activeStyleEditor && activeStyleSeries ? (
+          <SeriesStylePopover
+            anchorRect={activeStyleEditor.anchorRect}
+            hasCustomStyle={hasActiveSeriesStyle}
+            series={activeStyleSeries}
+            style={activeSeriesStyle}
+            onChange={(patch) => updateSeriesStyle(activeStyleEditor.seriesId, patch)}
+            onClose={() => setActiveStyleEditor(null)}
+            onReset={() => resetSeriesStyle(activeStyleEditor.seriesId)}
+          />
         ) : null}
       </div>
     </div>
