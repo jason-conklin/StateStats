@@ -13,6 +13,7 @@ export type ChartSeries = {
   unit?: string | null;
   color: string;
   dashArray?: string;
+  rawValuesAreNonNegative?: boolean;
   points: SeriesPoint[];
 };
 

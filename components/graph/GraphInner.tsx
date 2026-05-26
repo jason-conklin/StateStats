@@ -80,7 +80,7 @@ function buildYearTicks(startYear: number, endYear: number, chartWidth: number) 
   return ticks;
 }
 
-function getVisibleYDomain(visibleData: ChartDataRow[], seriesIds: string[]) {
+function getVisibleYDomain(visibleData: ChartDataRow[], seriesIds: string[], clampMinimumToZero: boolean) {
   const values = visibleData.flatMap((row) =>
     seriesIds
       .map((seriesId) => row[seriesId])
@@ -93,8 +93,9 @@ function getVisibleYDomain(visibleData: ChartDataRow[], seriesIds: string[]) {
   const maxValue = Math.max(...values);
   const span = maxValue - minValue;
   const padding = span === 0 ? Math.max(1, Math.abs(maxValue) * 0.08) : span * 0.08;
+  const domainMin = minValue - padding;
 
-  return [minValue - padding, maxValue + padding] as const;
+  return [clampMinimumToZero ? Math.max(0, domainMin) : domainMin, maxValue + padding] as const;
 }
 
 function getYAxisWidth(
@@ -184,9 +185,10 @@ export default function GraphInner({
   const axisTickFontSize = isMobileChart ? 11 : 12;
   const yAxisTickMargin = isMobileChart ? 4 : 10;
   const visibleRangeLabel = visibleData.length > 0 ? `${visibleStartYear}\u2013${visibleEndYear}` : null;
+  const clampMinimumToZero = normalization === "raw" && series.length > 0 && series.every((item) => item.rawValuesAreNonNegative);
   const yDomain = useMemo(
-    () => getVisibleYDomain(visibleData, seriesIds),
-    [seriesIds, visibleData],
+    () => getVisibleYDomain(visibleData, seriesIds, clampMinimumToZero),
+    [clampMinimumToZero, seriesIds, visibleData],
   );
   const yAxisWidth = useMemo(
     () => getYAxisWidth(yDomain, yAxisUnit, normalization, isMobileChart),

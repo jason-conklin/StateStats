@@ -82,6 +82,18 @@ const EMPTY_STYLE_MAPS: Record<ComparisonMode, SeriesStyleMap> = {
   metrics: {},
 };
 const EMPTY_STYLE_MAP: SeriesStyleMap = {};
+const RAW_NONNEGATIVE_METRIC_IDS = new Set([
+  "annual_precipitation",
+  "annual_snowfall",
+  "average_annual_temperature",
+  "earthquake_count",
+  "median_age",
+  "median_home_value",
+  "median_household_income",
+  "population_total",
+  "tornado_count",
+  "unemployment_rate",
+]);
 
 const ChartContainer = dynamic<ChartContainerProps>(
   () => import("./GraphInner").then((mod) => mod.default),
@@ -168,6 +180,7 @@ function buildStateChartSeries(
         unit: selectedMetric?.unit,
         color: style.color,
         dashArray: style.dashArray,
+        rawValuesAreNonNegative: metricUsesNonnegativeRawDomain(selectedMetric?.id),
         points: seriesEntry.points,
       } satisfies ChartSeries;
     })
@@ -192,6 +205,7 @@ function buildMetricChartSeries(
         unit: metric.unit ?? seriesEntry.unit,
         color: style.color,
         dashArray: style.dashArray,
+        rawValuesAreNonNegative: metricUsesNonnegativeRawDomain(metric.id),
         points: seriesEntry.points,
       } satisfies ChartSeries;
     })
@@ -200,6 +214,10 @@ function buildMetricChartSeries(
 
 function getMetricUnitKey(metric: MetricOption | undefined) {
   return metric?.unit?.trim().toLowerCase() ?? "";
+}
+
+function metricUsesNonnegativeRawDomain(metricId: string | undefined) {
+  return metricId ? RAW_NONNEGATIVE_METRIC_IDS.has(metricId) : false;
 }
 
 function sanitizeStyleMap(value: unknown): SeriesStyleMap {
@@ -297,6 +315,7 @@ export function GraphExplorer({
   const [stateSearchTerm, setStateSearchTerm] = useState("");
   const [singleStateSearchTerm, setSingleStateSearchTerm] = useState("");
   const [normalization, setNormalization] = useState<NormalizationMode>(initialNormalization);
+  const [normalizationForcedByUnits, setNormalizationForcedByUnits] = useState(initialNormalization === "indexed");
   const [stateAvailableYears, setStateAvailableYears] = useState<number[]>(
     initialMode === "states" ? initialAvailableYears : [],
   );
@@ -469,11 +488,24 @@ export function GraphExplorer({
   }, [availableYears]);
 
   useEffect(() => {
-    if (comparisonMode !== "metrics") return;
-    if (normalization !== "indexed" && !canUseRawMetricComparison) {
-      setNormalization("indexed");
+    if (comparisonMode !== "metrics") {
+      setNormalizationForcedByUnits(false);
+      return;
     }
-  }, [canUseRawMetricComparison, comparisonMode, normalization]);
+
+    if (!canUseRawMetricComparison) {
+      if (normalization !== "indexed") {
+        setNormalization("indexed");
+      }
+      setNormalizationForcedByUnits(true);
+      return;
+    }
+
+    if (normalizationForcedByUnits) {
+      setNormalization("raw");
+      setNormalizationForcedByUnits(false);
+    }
+  }, [canUseRawMetricComparison, comparisonMode, normalization, normalizationForcedByUnits]);
 
   useEffect(() => {
     if (comparisonMode !== "states") return;
@@ -581,7 +613,11 @@ export function GraphExplorer({
     setComparisonMode(nextMode);
     setIsChartZoomed(false);
     if (nextMode === "metrics") {
-      setNormalization("indexed");
+      setNormalization(canUseRawMetricComparison ? "raw" : "indexed");
+      setNormalizationForcedByUnits(!canUseRawMetricComparison);
+    } else {
+      setNormalization("raw");
+      setNormalizationForcedByUnits(false);
     }
   };
 
@@ -898,6 +934,7 @@ export function GraphExplorer({
                   onClick={() => {
                     if (disabled) return;
                     setNormalization(mode);
+                    setNormalizationForcedByUnits(false);
                   }}
                   aria-pressed={effectiveNormalization === mode}
                   disabled={disabled}

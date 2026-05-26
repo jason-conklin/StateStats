@@ -198,6 +198,12 @@ export default async function GraphPage(props: GraphPageProps) {
     const requestedMetricIds = normalizeMetricIds(params.metrics, availableMetricIds);
     const defaultMetricIds = DEFAULT_METRIC_COMPARISON_IDS.filter((metricId) => availableMetricIds.has(metricId));
     const selectedMetricIds = requestedMetricIds.length > 0 ? requestedMetricIds : defaultMetricIds;
+    const selectedMetricUnitKeys = new Set(
+      selectedMetricIds
+        .map((metricId) => metrics.find((metric) => metric.id === metricId)?.unit?.trim().toLowerCase() ?? "")
+        .filter(Boolean),
+    );
+    const canUseRawMetricComparison = selectedMetricIds.length > 0 && selectedMetricUnitKeys.size === 1;
     const metricData = comparisonMode === "states" ? await loadMetricData(selectedMetricId) : null;
     const metricComparisonData =
       comparisonMode === "metrics" && selectedStateId
@@ -229,7 +235,9 @@ export default async function GraphPage(props: GraphPageProps) {
     const normalizationPreference = requestedNormalization ?? legacyNormalization;
     const normalization =
       comparisonMode === "metrics"
-        ? normalizationPreference ?? "indexed"
+        ? canUseRawMetricComparison
+          ? normalizationPreference ?? "raw"
+          : "indexed"
         : normalizationPreference === "indexed"
           ? "indexed"
           : "raw";
