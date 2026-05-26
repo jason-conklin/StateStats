@@ -28,23 +28,29 @@ type Props = {
 };
 
 const POPOVER_WIDTH = 304;
-const POPOVER_HEIGHT = 344;
+const POPOVER_HEIGHT = 416;
 const VIEWPORT_PADDING = 12;
 const ANCHOR_GAP = 10;
 
 const PRESET_COLORS = [
-  "#2563eb",
-  "#7c3aed",
-  "#db2777",
-  "#dc2626",
-  "#ea580c",
-  "#ca8a04",
-  "#059669",
-  "#0f766e",
-  "#0891b2",
-  "#475569",
-  "#111827",
-  "#65a30d",
+  { name: "Blue", value: "#2563eb" },
+  { name: "Sky blue", value: "#0284c7" },
+  { name: "Cyan", value: "#0891b2" },
+  { name: "Teal", value: "#0f766e" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Lime", value: "#65a30d" },
+  { name: "Yellow", value: "#ca8a04" },
+  { name: "Amber", value: "#f59e0b" },
+  { name: "Orange", value: "#ea580c" },
+  { name: "Red", value: "#dc2626" },
+  { name: "Rose", value: "#e11d48" },
+  { name: "Pink", value: "#db2777" },
+  { name: "Purple", value: "#9333ea" },
+  { name: "Violet", value: "#7c3aed" },
+  { name: "Indigo", value: "#4f46e5" },
+  { name: "Brown", value: "#92400e" },
+  { name: "Slate gray", value: "#475569" },
+  { name: "Navy", value: "#111827" },
 ] as const;
 
 const LINE_STYLE_OPTIONS: LineStyleOption[] = [
@@ -92,7 +98,7 @@ function getColorInputValue(color: string) {
     return `#${hslToHex(Number(hslMatch[1]), Number(hslMatch[2]), Number(hslMatch[3]))}`;
   }
 
-  return PRESET_COLORS[0];
+  return PRESET_COLORS[0].value;
 }
 
 function getPopoverStyle(anchorRect: PopoverAnchorRect): CSSProperties {
@@ -233,18 +239,20 @@ export function SeriesStylePopover({
 
         <div className="grid grid-cols-6 gap-2" aria-label="Preset colors">
           {PRESET_COLORS.map((color) => {
-            const active = color.toLowerCase() === colorInputValue.toLowerCase();
+            const active = color.value.toLowerCase() === colorInputValue.toLowerCase();
             return (
               <button
-                key={color}
+                key={color.value}
                 type="button"
-                aria-label={`Use ${color} for ${series.label}`}
+                aria-label={`Use ${color.name} for ${series.label}`}
                 aria-pressed={active}
-                onClick={() => onChange({ color })}
-                className={`h-8 rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
-                  active ? "border-slate-900 ring-2 ring-slate-900/15" : "border-slate-200 hover:border-slate-400"
+                onClick={() => onChange({ color: color.value })}
+                className={`h-8 cursor-pointer rounded-full border shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+                  active
+                    ? "scale-[1.04] border-slate-950 shadow-md ring-2 ring-slate-900/20"
+                    : "border-white/80 hover:scale-105 hover:border-slate-300 hover:brightness-105 hover:shadow-md"
                 }`}
-                style={{ backgroundColor: color }}
+                style={{ backgroundColor: color.value }}
               />
             );
           })}
