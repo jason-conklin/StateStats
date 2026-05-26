@@ -921,7 +921,7 @@ export function GraphExplorer({
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:rounded-2xl">
+      <div className="flex min-h-[560px] flex-col rounded-3xl border border-slate-200 bg-white p-4 pb-3 shadow-sm md:min-h-0 md:rounded-2xl">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Chart</p>
@@ -953,7 +953,7 @@ export function GraphExplorer({
             No data available for this comparison.
           </div>
         ) : (
-          <div className="mt-3 h-[400px] w-full min-w-0 sm:h-[430px] md:mt-4 md:h-[420px]">
+          <div className="mt-3 h-[460px] w-full min-w-0 flex-1 sm:h-[500px] md:mt-4 md:h-auto md:min-h-[520px] lg:min-h-[540px] xl:min-h-[560px]">
             <ChartContainer
               key={chartInstanceKey}
               chartData={chartData}
@@ -966,7 +966,7 @@ export function GraphExplorer({
         )}
 
         {legendItems.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-700">
+          <div className="mt-3 flex flex-wrap gap-2.5 text-xs text-slate-700">
             {legendItems.map((item) => (
               <button
                 key={item.id}
@@ -975,10 +975,10 @@ export function GraphExplorer({
                 aria-expanded={activeStyleEditor?.seriesId === item.id}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => openSeriesStyleEditor(item.id, event.currentTarget)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${
+                className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-left shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 active:translate-y-0 active:shadow-sm ${
                   activeStyleEditor?.seriesId === item.id
-                    ? "border-slate-400 bg-slate-100 text-slate-950"
-                    : "border-transparent bg-slate-50 hover:border-slate-200 hover:bg-white hover:text-slate-950"
+                    ? "border-slate-400 bg-slate-100 text-slate-950 shadow-md"
+                    : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 hover:shadow-md"
                 }`}
               >
                 <svg className="h-3.5 w-8 shrink-0" viewBox="0 0 32 14" aria-hidden>
