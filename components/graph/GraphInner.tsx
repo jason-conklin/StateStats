@@ -107,12 +107,7 @@ function getYAxisWidth(
   const [domainMin, domainMax] = yDomain;
   const candidates = [domainMin, (domainMin + domainMax) / 2, domainMax];
   const longestLabelLength = Math.max(
-    ...candidates.map((value) =>
-      formatMetricValue(value, yAxisUnit ?? undefined, {
-        compact: true,
-        mode: normalization,
-      }).length,
-    ),
+    ...candidates.map((value) => formatYAxisTick(value, yAxisUnit, normalization).length),
   );
 
   if (isMobileChart) {
@@ -120,6 +115,24 @@ function getYAxisWidth(
   }
 
   return Math.min(118, Math.max(58, longestLabelLength * 8 + 16));
+}
+
+function formatRelativeIndex(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatYAxisTick(value: number, yAxisUnit: string | null | undefined, normalization: NormalizationMode) {
+  if (normalization === "indexed") {
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+  }
+
+  return formatMetricValue(value, yAxisUnit ?? undefined, {
+    compact: true,
+    mode: normalization,
+  });
 }
 
 export default function GraphInner({
@@ -195,16 +208,19 @@ export default function GraphInner({
     [isMobileChart, normalization, yAxisUnit, yDomain],
   );
   const yAxisTickFormatter = useMemo(
-    () => (value: number) =>
-      formatMetricValue(value, yAxisUnit ?? undefined, {
-        compact: true,
-        mode: normalization,
-      }),
+    () => (value: number) => formatYAxisTick(value, yAxisUnit, normalization),
     [normalization, yAxisUnit],
   );
   const xAxisTickFormatter = useCallback((value: number) => `${Math.round(Number(value))}`, []);
   const baseStrokeWidth = series.length >= 24 ? 1.7 : 2;
   const interactionStrokeWidth = 14;
+  const yAxisTickStyle = useMemo(
+    () => ({
+      fontSize: normalization === "indexed" ? Math.max(10, axisTickFontSize - 1) : axisTickFontSize,
+      fill: normalization === "indexed" ? "#64748b" : "#475569",
+    }),
+    [axisTickFontSize, normalization],
+  );
   const yearTicks = useMemo(
     () => buildYearTicks(visibleStartYear, visibleEndYear, chartWidth),
     [chartWidth, visibleEndYear, visibleStartYear],
@@ -551,12 +567,12 @@ export default function GraphInner({
           <p className="mt-2 text-lg font-semibold text-slate-900">
             {lockedInspection.value === null
               ? "No data"
-              : formatMetricValue(lockedInspection.value, lockedSeries?.unit ?? undefined, { mode: normalization })}
+              : normalization === "indexed" && lockedInspection.rawValue !== null
+                ? formatMetricValue(lockedInspection.rawValue, lockedSeries?.unit ?? undefined)
+                : formatMetricValue(lockedInspection.value, lockedSeries?.unit ?? undefined, { mode: normalization })}
           </p>
-          {normalization === "indexed" && lockedInspection.rawValue !== null ? (
-            <p className="mt-1 text-xs text-slate-500">
-              Raw: {formatMetricValue(lockedInspection.rawValue, lockedSeries?.unit ?? undefined)}
-            </p>
+          {normalization === "indexed" && lockedInspection.value !== null ? (
+            <p className="mt-1 text-xs text-slate-500">Relative index: {formatRelativeIndex(lockedInspection.value)}</p>
           ) : null}
         </div>
       ) : null}
@@ -593,7 +609,7 @@ export default function GraphInner({
             tickLine={false}
             axisLine={false}
             tickMargin={yAxisTickMargin}
-            tick={{ fontSize: axisTickFontSize, fill: "#475569" }}
+            tick={yAxisTickStyle}
           />
           <Tooltip
             content={

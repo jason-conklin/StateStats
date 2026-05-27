@@ -13,6 +13,13 @@ type Props = TooltipProps<number, string> & {
   series: ChartSeries[];
 };
 
+function formatRelativeIndex(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
 export function TooltipContent({
   active,
   payload,
@@ -31,6 +38,7 @@ export function TooltipContent({
   const seriesConfig = series.find((item) => item.id === hoveredSeriesId);
   const seriesLabel = seriesConfig?.label ?? entry.name?.toString() ?? entry.dataKey?.toString() ?? "Series";
   const rawValue = entry.payload?.[getRawValueKey(hoveredSeriesId)];
+  const hasRawValue = typeof rawValue === "number" && Number.isFinite(rawValue);
   const color = (entry.color as string) ?? "#0f172a";
 
   return (
@@ -40,14 +48,18 @@ export function TooltipContent({
         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} aria-hidden />
         <p className="text-sm font-semibold text-slate-900">{seriesLabel}</p>
       </div>
-      <p className="mt-2 text-lg font-semibold text-slate-900">
-        {formatMetricValue(entry.value, seriesConfig?.unit ?? undefined, { mode: normalization })}
-      </p>
-      {normalization === "indexed" && typeof rawValue === "number" && Number.isFinite(rawValue) ? (
-        <p className="mt-1 text-xs text-slate-500">
-          Raw: {formatMetricValue(rawValue, seriesConfig?.unit ?? undefined)}
+      {normalization === "indexed" && hasRawValue ? (
+        <>
+          <p className="mt-2 text-lg font-semibold text-slate-900">
+            {formatMetricValue(rawValue, seriesConfig?.unit ?? undefined)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Relative index: {formatRelativeIndex(entry.value)}</p>
+        </>
+      ) : (
+        <p className="mt-2 text-lg font-semibold text-slate-900">
+          {formatMetricValue(entry.value, seriesConfig?.unit ?? undefined, { mode: normalization })}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

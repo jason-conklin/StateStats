@@ -430,7 +430,7 @@ export function GraphExplorer({
       ? yAxisUnit
         ? `Unit: ${yAxisUnit} · Raw values`
         : "Raw values"
-      : "Indexed to start year";
+      : "Relative change from start";
   const chartInstanceKey = [
     comparisonMode,
     selectedMetricId,
@@ -945,16 +945,18 @@ export function GraphExplorer({
                       : "text-slate-600 hover:text-slate-800"
                   }`}
                 >
-                  {mode === "raw" ? "Raw values" : "Indexed (100 = start)"}
+                  {mode === "raw" ? "Raw values" : "Relative change (starts aligned)"}
                 </button>
               );
             })}
           </div>
-          {rawDisabled ? (
-            <p className="text-xs leading-relaxed text-slate-500">
-              Raw values are disabled when comparing metrics with different units.
-            </p>
-          ) : null}
+          <p className="text-xs leading-relaxed text-slate-500">
+            {rawDisabled
+              ? "Raw values are disabled when comparing metrics with different units. Relative change aligns each line to a common starting point."
+              : effectiveNormalization === "indexed"
+                ? "Aligns each line to a common starting point so trends can be compared over time."
+                : "Shows original values in their native units."}
+          </p>
         </div>
       </div>
 
